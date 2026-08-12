@@ -1,4 +1,4 @@
-package me.rainma22.dillydally;
+package me.rainma22.dillydally.validation;
 
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;

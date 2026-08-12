@@ -6,7 +6,6 @@ package me.rainma22.dillydally;
 import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.net.http.HttpClient;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -18,9 +17,6 @@ public class Server {
     private static final Path configDirPath = Path.of("config");
     private static final Path configJson = configDirPath.resolve("config.json");
     private static ConfBean config = new ConfBean();
-    private static final HttpClient client = HttpClient.newHttpClient();
-
-    private static final String LETS_ENCRYPT_STAGING_URL = "https://acme-staging-v02.api.letsencrypt.org/directory";
     private static HttpServer server = null;
 
     public static void main(String[] args) {
