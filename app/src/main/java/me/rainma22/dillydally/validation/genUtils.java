@@ -3,7 +3,9 @@ package me.rainma22.dillydally.validation;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
+import java.security.Security;
 import javax.security.auth.x500.X500Principal;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.operator.ContentSigner;
 import org.bouncycastle.operator.OperatorCreationException;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
@@ -15,6 +17,10 @@ import org.bouncycastle.pkcs.jcajce.JcaPKCS10CertificationRequestBuilder;
  *
  */
 public class genUtils {
+
+    static {
+        Security.addProvider(new BouncyCastleProvider());
+    }
 
     public static PKCS10CertificationRequest genCSR() throws OperatorCreationException, NoSuchAlgorithmException {
         KeyPair keyPair = generateKeyPair();
@@ -29,9 +35,9 @@ public class genUtils {
         return csr;
     }
 
-    private static KeyPair generateKeyPair() throws NoSuchAlgorithmException {
-        var gen = KeyPairGenerator.getInstance("RSA");
-        gen.initialize(2048);
+    public static KeyPair generateKeyPair() throws NoSuchAlgorithmException {
+        var gen = KeyPairGenerator.getInstance("ECDSA");
+        gen.initialize(256);
         return gen.genKeyPair();
     }
 
