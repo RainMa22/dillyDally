@@ -10,8 +10,8 @@ import java.security.KeyPair;
 import java.security.NoSuchAlgorithmException;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
+
 import org.jose4j.jwk.JsonWebKey;
-import org.jose4j.jwk.JsonWebKeySet;
 import org.jose4j.jwk.PublicJsonWebKey;
 import org.jose4j.jws.AlgorithmIdentifiers;
 import org.jose4j.jws.JsonWebSignature;
@@ -25,24 +25,24 @@ public class Validator {
 
     private final HttpClient client = HttpClient.newHttpClient();
     private static final String LETS_ENCRYPT_STAGING_URL = "https://acme-staging-v02.api.letsencrypt.org/directory";
-    private ResourceLocationResponse resourceLocations;
+    private final ResourceLocationResponse resourceLocations;
     private String nextNounce = null;
 
     public Validator() throws IOException, InterruptedException {
         resourceLocations = new JSONObject(
                 client.send(HttpRequest.newBuilder(URI.create(LETS_ENCRYPT_STAGING_URL))
-                        .GET()
-                        .build(),
-                        HttpResponse.BodyHandlers.ofString())
+                                        .GET()
+                                        .build(),
+                                HttpResponse.BodyHandlers.ofString())
                         .body())
                 .fromJson(ResourceLocationResponse.class);
     }
 
     private String newNonce() throws IOException, InterruptedException {
         return client.send(HttpRequest.newBuilder(URI.create(resourceLocations.getNewNonce()))
-                .HEAD()
-                .build(),
-                HttpResponse.BodyHandlers.ofByteArray())
+                                .HEAD()
+                                .build(),
+                        HttpResponse.BodyHandlers.ofByteArray())
                 .headers()
                 .firstValue("Replay-Nonce")
                 .orElse(null);
@@ -62,19 +62,10 @@ public class Validator {
         jws.setHeader("url", resourceLocations.getNewAccount());
         jws.setJwkHeader((PublicJsonWebKey) jwk);
         jws.setPayload(new JSONObject(
-                Map.of("termsOfServiceAgreed", resourceLocations.getMeta().getTermsOfService() != null
-                        ? true : null)
+                Map.of("termsOfServiceAgreed", true)
         ).toString());
         jws.setKey(kp.getPrivate());
-
-        System.out.println(new JSONObject(jws.getHeaders().getFullHeaderAsJsonString())
-                .toString(4)
-        );
-        System.out.println(new JSONObject(Map.of("termsOfServiceAgreed", resourceLocations.getMeta().getTermsOfService() != null
-                ? true : null))
-                .toString(4));
         var segments = jws.getCompactSerialization().split("[.]");
-        System.out.println(segments[2]);
         var reqBody = new JSONObject(
                 Map.of("protected", segments[0],
                         "payload", segments[1],
