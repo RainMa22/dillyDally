@@ -16,7 +16,7 @@ import org.bouncycastle.pkcs.jcajce.JcaPKCS10CertificationRequestBuilder;
 /**
  *
  */
-public class genUtils {
+public class GenUtils {
 
     static {
         Security.addProvider(new BouncyCastleProvider());
