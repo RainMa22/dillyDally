@@ -129,6 +129,11 @@ public class Validator {
                                 }).get();
         }
 
+        public String getCert() throws IOException, InterruptedException, JoseException, ExecutionException {
+                String orderString = newOrder();
+                return new JSONObject(JSONObject.fromJson(orderString, NewOrderResponse.class)).toString(4);
+        }
+
         public static void main(String[] args) throws IOException, InterruptedException, NoSuchAlgorithmException,
                         JoseException, ExecutionException {
                 System.out.println("Getting PATH from STAGING:");
@@ -143,7 +148,7 @@ public class Validator {
                 System.out.print("Account location: ");
                 System.out.println(validator.accountLocation);
                 System.out.println("requesting new order:");
-                System.out.println(validator.newOrder());
+                System.out.println(validator.getCert());
                 System.out.print("Order location: ");
                 System.out.println(validator.orderLocation);
         }

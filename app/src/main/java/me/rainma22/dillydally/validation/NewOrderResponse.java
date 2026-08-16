@@ -1,0 +1,96 @@
+package me.rainma22.dillydally.validation;
+
+import java.util.List;
+
+import org.jose4j.json.internal.json_simple.JSONObject;
+
+public class NewOrderResponse {
+    public static final String PENDING = "pending";
+    public static final String READY = "ready";
+    public static final String PROCESSING = "processing";
+    public static final String VALID = "valid";
+    public static final String INVALID = "invalid";
+    String status;
+    String expires;
+    String notBefore = null;
+    String notAfter = null;
+    List<NewOrderIdentifier> identifiers;
+    List<String> authorizations;
+    String finalize;
+    String certificate = null;
+    JSONObject error = null;
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public String getExpires() {
+        return expires;
+    }
+
+    public void setExpires(String expires) {
+        this.expires = expires;
+    }
+
+    public String getNotBefore() {
+        return notBefore;
+    }
+
+    public void setNotBefore(String notBefore) {
+        this.notBefore = notBefore;
+    }
+
+    public String getNotAfter() {
+        return notAfter;
+    }
+
+    public void setNotAfter(String notAfter) {
+        this.notAfter = notAfter;
+    }
+
+    public List<NewOrderIdentifier> getIdentifiers() {
+        return identifiers;
+    }
+
+    public void setIdentifiers(List<NewOrderIdentifier> identifiers) {
+        this.identifiers = identifiers;
+    }
+
+    public List<String> getAuthorizations() {
+        return authorizations;
+    }
+
+    public void setAuthorizations(List<String> authorizations) {
+        this.authorizations = authorizations;
+    }
+
+    public String getFinalize() {
+        return finalize;
+    }
+
+    public void setFinalize(String finalize) {
+        this.finalize = finalize;
+    }
+
+    public String getCertificate() {
+        return certificate;
+    }
+
+    public void setCertificate(String certificate) {
+        this.certificate = certificate;
+    }
+
+    public JSONObject getError() {
+        return error;
+    }
+
+    public void setError(JSONObject error) {
+        this.error = error;
+    }
+
+}
+
