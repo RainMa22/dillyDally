@@ -1,6 +1,6 @@
 package me.rainma22.dillydally.validation;
 
-public class NewOrderIdentifier {
+public class OrderIdentifier {
     String type;
     String value;
 

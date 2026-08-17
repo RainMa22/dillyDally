@@ -5,16 +5,11 @@ import java.util.List;
 import org.jose4j.json.internal.json_simple.JSONObject;
 
 public class NewOrderResponse {
-    public static final String PENDING = "pending";
-    public static final String READY = "ready";
-    public static final String PROCESSING = "processing";
-    public static final String VALID = "valid";
-    public static final String INVALID = "invalid";
     String status;
     String expires;
     String notBefore = null;
     String notAfter = null;
-    List<NewOrderIdentifier> identifiers;
+    List<OrderIdentifier> identifiers;
     List<String> authorizations;
     String finalize;
     String certificate = null;
@@ -52,11 +47,11 @@ public class NewOrderResponse {
         this.notAfter = notAfter;
     }
 
-    public List<NewOrderIdentifier> getIdentifiers() {
+    public List<OrderIdentifier> getIdentifiers() {
         return identifiers;
     }
 
-    public void setIdentifiers(List<NewOrderIdentifier> identifiers) {
+    public void setIdentifiers(List<OrderIdentifier> identifiers) {
         this.identifiers = identifiers;
     }
 

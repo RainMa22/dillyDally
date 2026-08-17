@@ -9,6 +9,7 @@ import java.net.http.HttpRequest.BodyPublishers;
 import java.net.http.HttpResponse.BodyHandlers;
 import java.security.KeyPair;
 import java.security.NoSuchAlgorithmException;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
@@ -114,7 +115,7 @@ public class Validator {
                                 }).get();
         }
 
-        public String getAuthChallenges(String authString)
+        public AuthChallengeResponse getAuthChallenge(String authString)
                         throws JoseException, InterruptedException, ExecutionException {
                 var jws = new ACMEJsonWebSignature(accountLocation, nextNonce, authString, kp.getPrivate());
                 var req = JoseHttpRequest.newBuilder(URI.create(authString))
@@ -126,6 +127,7 @@ public class Validator {
                                 .thenApply(res -> {
                                         return res.body();
                                 })
+                                .thenApply(str -> JSONObject.fromJson(str, AuthChallengeResponse.class))
                                 .get();
         }
 
@@ -138,8 +140,11 @@ public class Validator {
                 System.out.print("Order location: ");
                 System.out.println(orderLocation);
                 System.out.println("Getting Auth Challenges:");
+                Map<String, AuthChallengeResponse> responses = new HashMap<>();
                 for (var auth : orderRes.getAuthorizations()) {
-                        System.out.println(auth + ": " + new JSONObject(getAuthChallenges(auth)).toString(4));
+                        var res = getAuthChallenge(auth);
+                        responses.put(auth, res);
+                        System.out.println(auth + ": " + new JSONObject(res).toString(4));
                 }
                 return "";
         }
