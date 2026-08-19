@@ -22,7 +22,7 @@ import org.jose4j.lang.JoseException;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import me.rainma22.dillydally.ConfBean;
+import me.rainma22.dillydally.conf.ConfBean;
 
 /**
  *
@@ -168,9 +168,18 @@ public class Validator {
                                 throw new UnsupportedOperationException("only http-01 challenges supported for now");
                         }
                         System.out.println(new JSONObject(http01Challenge).toString(4));
-                        System.out.printf("would put %s at http://%s/.well-known/acme-challenge/%s \n",
-                                        http01Challenge.getToken(),
-                                        res.getIdentifier().getValue(), http01Challenge.getToken());
+                        if (!conf.getHttpChallengeConf().getType().equalsIgnoreCase("file")) {
+                                System.out.printf("would put %s at http://%s/.well-known/acme-challenge/%s \n",
+                                                http01Challenge.getToken(),
+                                                res.getIdentifier().getValue(), http01Challenge.getToken());
+                                throw new UnsupportedOperationException(
+                                                "unsupported challenge type configured: " + conf.getHttpChallengeConf().getType());
+                        } else {
+                                System.out.printf("would put %s at %s/.well-known/acme-challenge/%s \n",
+                                                http01Challenge.getToken(),
+                                                conf.getHttpChallengeConf().getPathToWebRootDir(),
+                                                http01Challenge.getToken());
+                        }
                 }
 
                 return "";

@@ -1,4 +1,4 @@
-package me.rainma22.dillydally;
+package me.rainma22.dillydally.conf;
 
 import java.util.List;
 
@@ -10,6 +10,7 @@ public class ConfBean {
     private int httpPort = 80;
     private int httpsPort = 443;
     private boolean staging = true;
+    private HttpChallengeConfBean httpChallengeConf = new HttpChallengeConfBean();
 
     private List<String> domains = List.of(
             "this.is.a.test.com");
@@ -54,5 +55,12 @@ public class ConfBean {
         this.domains = domains;
     }
 
-    
+    public HttpChallengeConfBean getHttpChallengeConf() {
+        return httpChallengeConf;
+    }
+
+    public void setHttpChallengeConf(HttpChallengeConfBean httpChallengeConf) {
+        this.httpChallengeConf = httpChallengeConf;
+    }
+
 }
