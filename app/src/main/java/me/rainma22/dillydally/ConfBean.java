@@ -1,5 +1,7 @@
 package me.rainma22.dillydally;
 
+import java.util.List;
+
 /**
  *
  */
@@ -8,6 +10,9 @@ public class ConfBean {
     private int httpPort = 80;
     private int httpsPort = 443;
     private boolean staging = true;
+
+    private List<String> domains = List.of(
+            "this.is.a.test.com");
 
     public int getLastRenew() {
         return lastRenew;
@@ -40,5 +45,14 @@ public class ConfBean {
     public void setStaging(boolean staging) {
         this.staging = staging;
     }
+
+    public List<String> getDomains() {
+        return domains;
+    }
+
+    public void setDomains(List<String> domains) {
+        this.domains = domains;
+    }
+
     
 }

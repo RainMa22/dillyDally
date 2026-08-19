@@ -7,16 +7,22 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpRequest.BodyPublishers;
 import java.net.http.HttpResponse.BodyHandlers;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.KeyPair;
 import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
 import org.jose4j.jwk.JsonWebKey;
-import org.jose4j.jws.AlgorithmIdentifiers;
 import org.jose4j.lang.JoseException;
+import org.json.JSONException;
 import org.json.JSONObject;
+
+import me.rainma22.dillydally.ConfBean;
 
 /**
  *
@@ -30,6 +36,7 @@ public class Validator {
         private String nextNonce = null;
         private KeyPair kp;
         private String orderLocation = null;
+        private ConfBean conf;
 
         private <T> HttpResponse<T> processNonce(HttpResponse<T> res) {
                 nextNonce = res.headers().firstValue("Replay-Nonce")
@@ -37,7 +44,8 @@ public class Validator {
                 return res;
         }
 
-        public Validator(KeyPair kp) throws IOException, InterruptedException {
+        public Validator(ConfBean conf, KeyPair kp) throws IOException, InterruptedException {
+                this.conf = conf;
                 this.kp = kp;
                 resourceLocations = new JSONObject(
                                 client.send(HttpRequest.newBuilder(URI.create(LETS_ENCRYPT_STAGING_URL))
@@ -96,10 +104,16 @@ public class Validator {
 
                 var jws = new ACMEJsonWebSignature(accountLocation, nextNonce, resourceLocations.getNewOrder(),
                                 kp.getPrivate());
+                var identifiers = conf.getDomains()
+                                .stream()
+                                .map(str -> {
+                                        var res = new OrderIdentifier();
+                                        res.setType("dns");
+                                        res.setValue(str);
+                                        return res;
+                                }).toList();
                 var payload = new JSONObject(
-                                Map.of("identifiers", java.util.List.of(
-                                                Map.of("type", "dns",
-                                                                "value", "rainma.mooo.com"))));
+                                Map.of("identifiers", identifiers));
                 jws.setPayload(payload.toString());
                 var reqBody = JSONStringof(jws);
                 var req = JoseHttpRequest.newBuilder(URI.create(resourceLocations.getNewOrder()))
@@ -110,7 +124,7 @@ public class Validator {
                                 BodyHandlers.ofString())
                                 .thenApplyAsync(this::processNonce)
                                 .thenApply(res -> {
-                                        orderLocation = res.headers().firstValue("Location").get();
+                                        orderLocation = res.headers().firstValue("Location").orElse(null);
                                         return res.body();
                                 }).get();
         }
@@ -145,14 +159,42 @@ public class Validator {
                         var res = getAuthChallenge(auth);
                         responses.put(auth, res);
                         System.out.println(auth + ": " + new JSONObject(res).toString(4));
+                        // select http-01 challenges
+                        var http01Challenge = res.getChallenges().stream()
+                                        .filter(c -> c.getType().equalsIgnoreCase("http-01"))
+                                        .findAny()
+                                        .orElse(null);
+                        if (http01Challenge == null) {
+                                throw new UnsupportedOperationException("only http-01 challenges supported for now");
+                        }
+                        System.out.println(new JSONObject(http01Challenge).toString(4));
+                        System.out.printf("would put %s at http://%s/.well-known/acme-challenge/%s \n",
+                                        http01Challenge.getToken(),
+                                        res.getIdentifier().getValue(), http01Challenge.getToken());
                 }
+
                 return "";
         }
 
         public static void main(String[] args) throws IOException, InterruptedException, NoSuchAlgorithmException,
                         JoseException, ExecutionException {
+                final Path configDirPath = Path.of("config");
+                final Path configJson = configDirPath.resolve("config.json");
+                try {
+                        Files.createDirectories(configDirPath);
+                        Files.createFile(configJson);
+                } catch (Exception e) {
+                        // ignored
+                }
+                ConfBean config = new ConfBean();
+                try {
+                        config = new JSONObject(configJson.toFile()).fromJson(ConfBean.class);
+                        Files.writeString(configJson, new JSONObject(config).toString(4), StandardCharsets.UTF_8);
+                } catch (JSONException je) {
+                        System.err.println("failed to load configuration json, default will be used instead");
+                }
                 System.out.println("Getting PATH from STAGING:");
-                var validator = new Validator(GenUtils.generateKeyPair());
+                var validator = new Validator(config, GenUtils.generateKeyPair());
                 System.out.println(new JSONObject(validator.resourceLocations).toString(4));
                 System.out.println("Getting New Nonce:");
                 var nonce = validator.newNonce();

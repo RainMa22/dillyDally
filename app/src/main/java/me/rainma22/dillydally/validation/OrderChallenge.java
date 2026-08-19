@@ -5,11 +5,11 @@ import java.util.List;
 import org.json.JSONPropertyName;
 
 public class OrderChallenge {
-    String type;
-    String url;
-    String status;
-    String token = null;
-    List<String> issuerDomainNames = null;
+    private String type;
+    private String url;
+    private String status;
+    private String token = null;
+    private List<String> issuerDomainNames = null;
 
     public String getType() {
         return type;
@@ -33,6 +33,14 @@ public class OrderChallenge {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public String getToken() {
+        return token;
+    }
+
+    public void setToken(String token) {
+        this.token = token;
     }
 
     @JSONPropertyName("issuer-domain-names")
