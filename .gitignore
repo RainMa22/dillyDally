@@ -10,3 +10,5 @@ build
 **/bin
 
 config/**
+
+res/**

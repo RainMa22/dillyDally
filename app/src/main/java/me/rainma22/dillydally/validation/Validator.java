@@ -5,6 +5,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.net.http.HttpClient.Redirect;
 import java.net.http.HttpRequest.BodyPublishers;
 import java.net.http.HttpResponse.BodyHandlers;
 import java.nio.charset.StandardCharsets;
@@ -145,6 +146,24 @@ public class Validator {
                                 .get();
         }
 
+        public boolean webAccessible(URI uri) {
+                try {
+                        var client = HttpClient.newBuilder()
+                                        .followRedirects(Redirect.ALWAYS)
+                                        .build();
+                        var req = HttpRequest.newBuilder(uri)
+                                        .GET()
+                                        .build();
+                        return client.send(req, BodyHandlers.ofString())
+                                        .statusCode() == 200;
+                } catch (IOException e) {
+                        // ignored
+                } catch (InterruptedException e) {
+                        // ignored
+                }
+                return false;
+        }
+
         public String getCert() throws IOException, InterruptedException, JoseException, ExecutionException {
                 System.out.println("requesting new order:");
 
@@ -173,12 +192,27 @@ public class Validator {
                                                 http01Challenge.getToken(),
                                                 res.getIdentifier().getValue(), http01Challenge.getToken());
                                 throw new UnsupportedOperationException(
-                                                "unsupported challenge type configured: " + conf.getHttpChallengeConf().getType());
+                                                "unsupported challenge type configured: "
+                                                                + conf.getHttpChallengeConf().getType());
                         } else {
-                                System.out.printf("would put %s at %s/.well-known/acme-challenge/%s \n",
+                                var httpConf = conf.getHttpChallengeConf();
+                                var challengeFolderPath = Path.of(httpConf.getPathToWebRootDir(), ".well-known",
+                                                "acme-challenge");
+                                Files.createDirectories(challengeFolderPath);
+                                var challengeFilePath = challengeFolderPath.resolve(http01Challenge.getToken());
+                                Files.createFile(challengeFilePath);
+                                Files.writeString(challengeFilePath, http01Challenge.getToken());
+                                System.out.printf("finished putting %s at %s/.well-known/acme-challenge/%s \n",
                                                 http01Challenge.getToken(),
                                                 conf.getHttpChallengeConf().getPathToWebRootDir(),
                                                 http01Challenge.getToken());
+                                var url = String.format(
+                                                "http://%s/.well-known/acme-challenge/%s",
+                                                res.getIdentifier().getValue(), http01Challenge.getToken());
+                                System.out.printf("Checking if %s is accesible now...", url);
+                                var accesible = webAccessible(URI.create(url));
+                                System.out.println(accesible);
+
                         }
                 }
 
@@ -197,10 +231,11 @@ public class Validator {
                 }
                 ConfBean config = new ConfBean();
                 try {
-                        config = new JSONObject(configJson.toFile()).fromJson(ConfBean.class);
+                        config = JSONObject.fromJson(Files.readString(configJson), ConfBean.class);
                         Files.writeString(configJson, new JSONObject(config).toString(4), StandardCharsets.UTF_8);
                 } catch (JSONException je) {
-                        System.err.println("failed to load configuration json, default will be used instead");
+                        System.out.println("failed to load configuration json, default will be used instead");
+                        je.printStackTrace();
                 }
                 System.out.println("Getting PATH from STAGING:");
                 var validator = new Validator(config, GenUtils.generateKeyPair());
