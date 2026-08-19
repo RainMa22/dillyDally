@@ -5,7 +5,6 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.net.http.HttpRequest.BodyPublisher;
 import java.net.http.HttpRequest.BodyPublishers;
 import java.net.http.HttpResponse.BodyHandlers;
 import java.nio.charset.StandardCharsets;
@@ -15,16 +14,13 @@ import java.security.KeyPair;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.atomic.AtomicLong;
 
-import org.bouncycastle.oer.its.ieee1609dot2.basetypes.HashAlgorithm;
-import org.jose4j.base64url.Base64;
 import org.jose4j.base64url.Base64Url;
 import org.jose4j.jwk.JsonWebKey;
-import org.jose4j.jws.AlgorithmIdentifiers;
 import org.jose4j.lang.HashUtil;
 import org.jose4j.lang.JoseException;
 import org.json.JSONException;
@@ -181,7 +177,6 @@ public class Validator {
                 Map<String, AuthChallengeResponse> responses = new HashMap<>();
                 for (var auth : orderRes.getAuthorizations()) {
                         var res = getAuthChallenge(auth);
-                        responses.put(auth, res);
                         System.out.println(auth + ": " + new JSONObject(res).toString(4));
                         // select http-01 challenges
                         var http01Challenge = res.getChallenges().stream()
@@ -227,21 +222,49 @@ public class Validator {
                                                 .thenApply(obj -> obj.toString(4))
                                                 .thenAccept(System.out::println)
                                                 .get();
-                                Thread.sleep(Duration.ofSeconds(5));
-                                if (nextNonce == null)
-                                        newNonce();
-                                var authStatus = client.send(
-                                                JoseHttpRequest.newBuilder(URI.create(auth))
-                                                                .POST(BodyPublishers.ofString(
-                                                                                JSONStringof(new ACMEJsonWebSignature(
-                                                                                                accountLocation,
-                                                                                                nextNonce, auth,
-                                                                                                kp.getPrivate()))))
-                                                                .build(),
-                                                BodyHandlers.ofString());
+                                AtomicLong waitTimeSec = new AtomicLong(0);
+                                while (waitTimeSec.get() != -1) {
+                                        System.out.printf("Waiting for validation, retrying in %d seconds... \n",
+                                                        waitTimeSec.get());
+                                        Thread.sleep(Duration.ofSeconds(waitTimeSec.get()));
+                                        if (nextNonce == null)
+                                                newNonce();
+                                        var authStatus = client.sendAsync(
+                                                        JoseHttpRequest.newBuilder(URI.create(auth))
+                                                                        .POST(BodyPublishers.ofString(
+                                                                                        JSONStringof(new ACMEJsonWebSignature(
+                                                                                                        accountLocation,
+                                                                                                        nextNonce, auth,
+                                                                                                        kp.getPrivate()))))
+                                                                        .build(),
+                                                        BodyHandlers.ofString())
+                                                        .thenApplyAsync(this::processNonce)
+                                                        .thenApplyAsync(r -> {
+                                                                String retryAfter = r.headers()
+                                                                                .firstValue("Retry-After").orElse("1");
+                                                                try {
+                                                                        waitTimeSec.set(Long
+                                                                                        .parseLong(retryAfter));
+                                                                } catch (NumberFormatException nfe) {
+                                                                        waitTimeSec.set(1);
+                                                                }
+                                                                return r;
 
-                                System.out.println(authStatus.body());
+                                                        })
+                                                        .thenApply(r -> r.body())
+                                                        .get();
+                                        AuthChallengeResponse newResponse = JSONObject.fromJson(authStatus,
+                                                        AuthChallengeResponse.class);
+                                        if (newResponse.getStatus().equals(ResponseConstants.VALID)) {
+                                                responses.put(auth, newResponse);
+                                                break;
+                                        }
+                                }
                         }
+                        responses.forEach((k, v) -> {
+                                System.out.printf("%s: %s \n\n", k, new JSONObject(v).toString(4));
+                        });
+                        // orderRes.getFinalize();
                 }
 
                 return "";

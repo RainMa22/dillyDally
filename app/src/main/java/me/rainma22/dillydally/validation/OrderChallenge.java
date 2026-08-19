@@ -9,6 +9,7 @@ public class OrderChallenge {
     private String url;
     private String status;
     private String token = null;
+    private String validated = null;
     private List<String> issuerDomainNames = null;
 
     public String getType() {
@@ -41,6 +42,14 @@ public class OrderChallenge {
 
     public void setToken(String token) {
         this.token = token;
+    }
+
+    public String getValidated() {
+        return validated;
+    }
+
+    public void setValidated(String validated) {
+        this.validated = validated;
     }
 
     @JSONPropertyName("issuer-domain-names")
