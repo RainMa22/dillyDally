@@ -5,7 +5,6 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.net.http.HttpClient.Redirect;
 import java.net.http.HttpRequest.BodyPublishers;
 import java.net.http.HttpResponse.BodyHandlers;
 import java.nio.charset.StandardCharsets;
@@ -146,24 +145,6 @@ public class Validator {
                                 .get();
         }
 
-        public boolean webAccessible(URI uri) {
-                try {
-                        var client = HttpClient.newBuilder()
-                                        .followRedirects(Redirect.ALWAYS)
-                                        .build();
-                        var req = HttpRequest.newBuilder(uri)
-                                        .GET()
-                                        .build();
-                        return client.send(req, BodyHandlers.ofString())
-                                        .statusCode() == 200;
-                } catch (IOException e) {
-                        // ignored
-                } catch (InterruptedException e) {
-                        // ignored
-                }
-                return false;
-        }
-
         public String getCert() throws IOException, InterruptedException, JoseException, ExecutionException {
                 System.out.println("requesting new order:");
 
@@ -210,7 +191,7 @@ public class Validator {
                                                 "http://%s/.well-known/acme-challenge/%s",
                                                 res.getIdentifier().getValue(), http01Challenge.getToken());
                                 System.out.printf("Checking if %s is accesible now...", url);
-                                var accesible = webAccessible(URI.create(url));
+                                var accesible = Utils.webAccessible(URI.create(url));
                                 System.out.println(accesible);
 
                         }
