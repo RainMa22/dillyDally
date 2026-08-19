@@ -1,10 +1,23 @@
 package me.rainma22.dillydally.validation;
 
+import java.io.IOException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.security.Security;
 import javax.security.auth.x500.X500Principal;
+
+import org.bouncycastle.asn1.ASN1BitString;
+import org.bouncycastle.asn1.ASN1Encodable;
+import org.bouncycastle.asn1.ASN1ObjectIdentifier;
+import org.bouncycastle.asn1.pkcs.PKCSObjectIdentifiers;
+import org.bouncycastle.asn1.x509.Extension;
+import org.bouncycastle.asn1.x509.Extensions;
+import org.bouncycastle.asn1.x509.ExtensionsGenerator;
+import org.bouncycastle.asn1.x509.GeneralName;
+import org.bouncycastle.asn1.x509.GeneralNames;
+import org.bouncycastle.asn1.x509.SubjectAltPublicKeyInfo;
+import org.bouncycastle.jcajce.BCFKSLoadStoreParameter.SignatureAlgorithm;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.operator.ContentSigner;
 import org.bouncycastle.operator.OperatorCreationException;
@@ -12,6 +25,8 @@ import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.bouncycastle.pkcs.PKCS10CertificationRequest;
 import org.bouncycastle.pkcs.PKCS10CertificationRequestBuilder;
 import org.bouncycastle.pkcs.jcajce.JcaPKCS10CertificationRequestBuilder;
+
+import me.rainma22.dillydally.conf.ConfBean;
 
 /**
  *
@@ -22,16 +37,38 @@ public class GenUtils {
         Security.addProvider(new BouncyCastleProvider());
     }
 
-    public static PKCS10CertificationRequest genCSR() throws OperatorCreationException, NoSuchAlgorithmException {
-        KeyPair keyPair = generateKeyPair();
-// Create a PKCS10 Certification Request Builder
+    public static PKCS10CertificationRequest genCSR(ConfBean conf)
+            throws OperatorCreationException, NoSuchAlgorithmException, IOException {
+        var generator = KeyPairGenerator.getInstance("RSA");
+        generator.initialize(2048);
+
+        KeyPair keyPair = generator.genKeyPair();
+
+        // Create a PKCS10 Certification Request Builder
         PKCS10CertificationRequestBuilder csrBuilder = new JcaPKCS10CertificationRequestBuilder(
-                new X500Principal("CN=Rainma22, C=CA"), keyPair.getPublic());
-// Create a Content Signer for signing the CSR
+                new X500Principal(String.format("CN=%s", conf.getDomains().get(0))), keyPair.getPublic());
+
+        ExtensionsGenerator extensionsGenerator = new ExtensionsGenerator();
+        if (conf.getDomains().size() > 1) {
+            var subDomains = conf.getDomains().subList(1, conf.getDomains().size());
+            extensionsGenerator.addExtension(Extension.subjectAlternativeName,
+                    false,
+                    new GeneralNames(
+                            subDomains.stream()
+                                    .map(domain -> new GeneralName(GeneralName.dNSName, domain))
+                                    .toArray(GeneralName[]::new)));
+
+            csrBuilder.addAttribute(PKCSObjectIdentifiers.pkcs_9_at_extensionRequest,
+                    extensionsGenerator.generate());
+        }
+
+        // Create a Content Signer for signing the CSR
         JcaContentSignerBuilder signerBuilder = new JcaContentSignerBuilder("SHA256withRSA");
         ContentSigner contentSigner = signerBuilder.build(keyPair.getPrivate());
-// Build the CSR
+
+        // Build the CSR
         PKCS10CertificationRequest csr = csrBuilder.build(contentSigner);
+
         return csr;
     }
 

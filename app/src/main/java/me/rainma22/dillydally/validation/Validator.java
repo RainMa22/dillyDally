@@ -19,6 +19,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.bouncycastle.operator.OperatorCreationException;
 import org.jose4j.base64url.Base64Url;
 import org.jose4j.jwk.JsonWebKey;
 import org.jose4j.lang.HashUtil;
@@ -165,7 +166,40 @@ public class Validator {
                                 .thenApplyAsync(this::processNonce);
         }
 
-        public String getCert() throws IOException, InterruptedException, JoseException, ExecutionException {
+        public CompletableFuture<HttpResponse<String>> finalizeRequest(String finalizeUrl)
+                        throws IOException, InterruptedException,
+                        OperatorCreationException, NoSuchAlgorithmException, JoseException, ExecutionException {
+                URI finalizeUri = URI.create(finalizeUrl);
+                if (nextNonce == null) {
+                        newNonce();
+                }
+
+                var jws = new ACMEJsonWebSignature(accountLocation, nextNonce, finalizeUrl, kp.getPrivate());
+                jws.setPayload(new JSONObject(
+                                Map.of("CSR", Base64Url.encode(GenUtils.genCSR(conf).getEncoded()))).toString());
+
+                var req = JoseHttpRequest.newBuilder(finalizeUri)
+                                .POST(BodyPublishers.ofString(JSONStringof(jws)))
+                                .build();
+                return client.sendAsync(req, BodyHandlers.ofString())
+                                .thenApplyAsync(this::processNonce);
+        }
+
+        public CompletableFuture<HttpResponse<String>> getOrder(String orderUrl)
+                        throws IOException, InterruptedException, JoseException {
+                URI orderUri = URI.create(orderUrl);
+                if (nextNonce == null)
+                        newNonce();
+                var jws = new ACMEJsonWebSignature(accountLocation, nextNonce, orderUrl, kp.getPrivate());
+                var req = JoseHttpRequest.newBuilder(orderUri)
+                                .POST(BodyPublishers.ofString(JSONStringof(jws)))
+                                .build();
+                return client.sendAsync(req, BodyHandlers.ofString())
+                                .thenApplyAsync(this::processNonce);
+        }
+
+        public String getCert() throws IOException, InterruptedException, JoseException, ExecutionException,
+                        OperatorCreationException, NoSuchAlgorithmException {
                 System.out.println("requesting new order:");
 
                 String orderString = newOrder();
@@ -264,14 +298,59 @@ public class Validator {
                         responses.forEach((k, v) -> {
                                 System.out.printf("%s: %s \n\n", k, new JSONObject(v).toString(4));
                         });
-                        // orderRes.getFinalize();
+                        AtomicLong waitTimeSec = new AtomicLong(0);
+                        System.out.println("finalizing: ");
+                        waitTimeSec.set(0);
+                        while (waitTimeSec.get() != -1) {
+                                Thread.sleep(Duration.ofSeconds(waitTimeSec.get()));
+                                var finalizeRes = finalizeRequest(orderRes.getFinalize());
+                                finalizeRes.thenAccept((r) -> {
+                                        JSONObject finalJson = new JSONObject(r.body());
+                                        var status = finalJson.optString("status", "");
+                                        if (status.equals(ResponseConstants.PROCESSING)) {
+                                                System.out.print("Waiting for the server to finish finalizing... \n");
+                                                try {
+                                                        waitTimeSec.set(r.headers().firstValueAsLong("Retry-After")
+                                                                        .orElse(1));
+                                                } catch (NumberFormatException nfe) {
+                                                        waitTimeSec.set(1);
+                                                }
+                                        } else {
+                                                System.out.printf("STATUS = %s", status);
+                                                System.out.println(finalJson.toString(4));
+                                                waitTimeSec.set(-1);
+                                        }
+                                }).get();
+                        }
+                        waitTimeSec.set(0);
+                        while (waitTimeSec.get() != -1) {
+                                Thread.sleep(Duration.ofSeconds(waitTimeSec.get()));
+                                var orderRes2 = getOrder(orderLocation);
+                                orderRes2.thenAccept((r) -> {
+                                        JSONObject orderJson = new JSONObject(r.body());
+                                        var status = orderJson.optString("status", "");
+                                        if (!status.equals(ResponseConstants.VALID)) {
+                                                System.out.print("Waiting for the order rto be valid... \n");
+                                                try {
+                                                        waitTimeSec.set(r.headers().firstValueAsLong("Retry-After")
+                                                                        .orElse(1));
+                                                } catch (NumberFormatException nfe) {
+                                                        waitTimeSec.set(1);
+                                                }
+                                        } else {
+                                                System.out.printf("STATUS = %s", status);
+                                                System.out.println(orderJson.toString(4));
+                                                waitTimeSec.set(-1);
+                                        }
+                                }).get();
+                        }
                 }
 
                 return "";
         }
 
         public static void main(String[] args) throws IOException, InterruptedException, NoSuchAlgorithmException,
-                        JoseException, ExecutionException {
+                        JoseException, ExecutionException, OperatorCreationException {
                 final Path configDirPath = Path.of("config");
                 final Path configJson = configDirPath.resolve("config.json");
                 try {

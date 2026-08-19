@@ -1,7 +1,6 @@
 package me.rainma22.dillydally.validation;
 
 import java.security.Key;
-import java.security.PrivateKey;
 import java.util.Map;
 
 import org.jose4j.jwk.JsonWebKey;
