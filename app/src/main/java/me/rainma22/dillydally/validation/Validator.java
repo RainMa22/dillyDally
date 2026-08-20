@@ -298,55 +298,66 @@ public class Validator {
                         responses.forEach((k, v) -> {
                                 System.out.printf("%s: %s \n\n", k, new JSONObject(v).toString(4));
                         });
-                        AtomicLong waitTimeSec = new AtomicLong(0);
-                        System.out.println("finalizing: ");
-                        waitTimeSec.set(0);
-                        while (waitTimeSec.get() != -1) {
-                                Thread.sleep(Duration.ofSeconds(waitTimeSec.get()));
-                                var finalizeRes = finalizeRequest(orderRes.getFinalize());
-                                finalizeRes.thenAccept((r) -> {
-                                        JSONObject finalJson = new JSONObject(r.body());
-                                        var status = finalJson.optString("status", "");
-                                        if (status.equals(ResponseConstants.PROCESSING)) {
-                                                System.out.print("Waiting for the server to finish finalizing... \n");
-                                                try {
-                                                        waitTimeSec.set(r.headers().firstValueAsLong("Retry-After")
-                                                                        .orElse(1));
-                                                } catch (NumberFormatException nfe) {
-                                                        waitTimeSec.set(1);
-                                                }
-                                        } else {
-                                                System.out.printf("STATUS = %s", status);
-                                                System.out.println(finalJson.toString(4));
-                                                waitTimeSec.set(-1);
-                                        }
-                                }).get();
-                        }
-                        waitTimeSec.set(0);
-                        while (waitTimeSec.get() != -1) {
-                                Thread.sleep(Duration.ofSeconds(waitTimeSec.get()));
-                                var orderRes2 = getOrder(orderLocation);
-                                orderRes2.thenAccept((r) -> {
-                                        JSONObject orderJson = new JSONObject(r.body());
-                                        var status = orderJson.optString("status", "");
-                                        if (!status.equals(ResponseConstants.VALID)) {
-                                                System.out.print("Waiting for the order rto be valid... \n");
-                                                try {
-                                                        waitTimeSec.set(r.headers().firstValueAsLong("Retry-After")
-                                                                        .orElse(1));
-                                                } catch (NumberFormatException nfe) {
-                                                        waitTimeSec.set(1);
-                                                }
-                                        } else {
-                                                System.out.printf("STATUS = %s", status);
-                                                System.out.println(orderJson.toString(4));
-                                                waitTimeSec.set(-1);
-                                        }
-                                }).get();
-                        }
                 }
-
-                return "";
+                AtomicLong waitTimeSec = new AtomicLong(0);
+                System.out.println("finalizing: ");
+                waitTimeSec.set(0);
+                while (waitTimeSec.get() != -1) {
+                        Thread.sleep(Duration.ofSeconds(waitTimeSec.get()));
+                        var finalizeRes = finalizeRequest(orderRes.getFinalize());
+                        finalizeRes.thenAccept((r) -> {
+                                JSONObject finalJson = new JSONObject(r.body());
+                                var status = finalJson.optString("status", "");
+                                if (status.equals(ResponseConstants.PROCESSING)) {
+                                        System.out.print("Waiting for the server to finish finalizing... \n");
+                                        try {
+                                                waitTimeSec.set(r.headers().firstValueAsLong("Retry-After")
+                                                                .orElse(1));
+                                        } catch (NumberFormatException nfe) {
+                                                waitTimeSec.set(1);
+                                        }
+                                } else {
+                                        System.out.printf("STATUS = %s", status);
+                                        System.out.println(finalJson.toString(4));
+                                        waitTimeSec.set(-1);
+                                }
+                        }).get();
+                }
+                waitTimeSec.set(0);
+                NewOrderResponse finalOrder = null;
+                while (waitTimeSec.get() != -1) {
+                        Thread.sleep(Duration.ofSeconds(waitTimeSec.get()));
+                        var orderRes2 = getOrder(orderLocation);
+                        finalOrder = orderRes2.thenApply((r) -> {
+                                JSONObject orderJson = new JSONObject(r.body());
+                                var status = orderJson.optString("status", "");
+                                if (!status.equals(ResponseConstants.VALID)) {
+                                        System.out.print("Waiting for the order rto be valid... \n");
+                                        try {
+                                                waitTimeSec.set(r.headers().firstValueAsLong("Retry-After")
+                                                                .orElse(1));
+                                        } catch (NumberFormatException nfe) {
+                                                waitTimeSec.set(1);
+                                        }
+                                } else {
+                                        System.out.printf("STATUS = %s", status);
+                                        System.out.println(orderJson.toString(4));
+                                        waitTimeSec.set(-1);
+                                }
+                                return orderJson;
+                        }).get()
+                                        .fromJson(NewOrderResponse.class);
+                }
+                String certUrl = finalOrder.getCertificate();
+                return client.sendAsync(JoseHttpRequest.newBuilder(URI.create(certUrl))
+                                .header("Accept", "application/pem-certificate-chain")
+                                .POST(BodyPublishers.ofString(JSONStringof(
+                                        new ACMEJsonWebSignature(accountLocation, nextNonce, certUrl, kp.getPrivate()))))
+                                .build(),
+                                BodyHandlers.ofString())
+                                .thenApply(this::processNonce)
+                                .thenApply((r) -> r.body())
+                                .get();
         }
 
         public static void main(String[] args) throws IOException, InterruptedException, NoSuchAlgorithmException,
@@ -379,7 +390,7 @@ public class Validator {
                 System.out.print("Account location: ");
                 System.out.println(validator.accountLocation);
                 System.out.println("Getting Cert:");
-                validator.getCert();
+                System.out.println(validator.getCert());
         }
 
 }
