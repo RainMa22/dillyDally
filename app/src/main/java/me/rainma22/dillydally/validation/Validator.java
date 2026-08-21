@@ -1,6 +1,9 @@
 package me.rainma22.dillydally.validation;
 
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.StringReader;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -10,16 +13,30 @@ import java.net.http.HttpResponse.BodyHandlers;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.Key;
 import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.bouncycastle.cert.X509CertificateHolder;
+import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.bouncycastle.openssl.PEMParser;
 import org.bouncycastle.operator.OperatorCreationException;
+import org.bouncycastle.util.io.pem.PemObject;
+import org.bouncycastle.util.io.pem.PemReader;
 import org.jose4j.base64url.Base64Url;
 import org.jose4j.jwk.JsonWebKey;
 import org.jose4j.lang.HashUtil;
@@ -166,7 +183,7 @@ public class Validator {
                                 .thenApplyAsync(this::processNonce);
         }
 
-        public CompletableFuture<HttpResponse<String>> finalizeRequest(String finalizeUrl)
+        public CompletableFuture<HttpResponse<String>> finalizeRequest(String finalizeUrl, KeyPair sslKeyPair)
                         throws IOException, InterruptedException,
                         OperatorCreationException, NoSuchAlgorithmException, JoseException, ExecutionException {
                 URI finalizeUri = URI.create(finalizeUrl);
@@ -176,7 +193,8 @@ public class Validator {
 
                 var jws = new ACMEJsonWebSignature(accountLocation, nextNonce, finalizeUrl, kp.getPrivate());
                 jws.setPayload(new JSONObject(
-                                Map.of("CSR", Base64Url.encode(GenUtils.genCSR(conf).getEncoded()))).toString());
+                                Map.of("CSR", Base64Url.encode(GenUtils.genCSR(conf, sslKeyPair).getEncoded())))
+                                .toString());
 
                 var req = JoseHttpRequest.newBuilder(finalizeUri)
                                 .POST(BodyPublishers.ofString(JSONStringof(jws)))
@@ -198,7 +216,8 @@ public class Validator {
                                 .thenApplyAsync(this::processNonce);
         }
 
-        public String getCert() throws IOException, InterruptedException, JoseException, ExecutionException,
+        public String getCert(KeyPair sslKeyPair)
+                        throws IOException, InterruptedException, JoseException, ExecutionException,
                         OperatorCreationException, NoSuchAlgorithmException {
                 System.out.println("requesting new order:");
 
@@ -249,7 +268,10 @@ public class Validator {
                                 System.out.printf("Checking if %s is accesible now...", url);
                                 var accesible = Utils.webAccessible(URI.create(url));
                                 System.out.println(accesible);
-
+                                if (!accesible) {
+                                        throw new IOException(
+                                                        "Could not accessible acme-challenge folder, please properly configure the json.");
+                                }
                                 var challengeRes = tryCompleteChallenge(http01Challenge.getUrl());
                                 challengeRes.thenApply(r -> r.body())
                                                 .thenApply(str -> new JSONObject(str))
@@ -304,7 +326,7 @@ public class Validator {
                 waitTimeSec.set(0);
                 while (waitTimeSec.get() != -1) {
                         Thread.sleep(Duration.ofSeconds(waitTimeSec.get()));
-                        var finalizeRes = finalizeRequest(orderRes.getFinalize());
+                        var finalizeRes = finalizeRequest(orderRes.getFinalize(), sslKeyPair);
                         finalizeRes.thenAccept((r) -> {
                                 JSONObject finalJson = new JSONObject(r.body());
                                 var status = finalJson.optString("status", "");
@@ -352,7 +374,8 @@ public class Validator {
                 return client.sendAsync(JoseHttpRequest.newBuilder(URI.create(certUrl))
                                 .header("Accept", "application/pem-certificate-chain")
                                 .POST(BodyPublishers.ofString(JSONStringof(
-                                        new ACMEJsonWebSignature(accountLocation, nextNonce, certUrl, kp.getPrivate()))))
+                                                new ACMEJsonWebSignature(accountLocation, nextNonce, certUrl,
+                                                                kp.getPrivate()))))
                                 .build(),
                                 BodyHandlers.ofString())
                                 .thenApply(this::processNonce)
@@ -361,7 +384,8 @@ public class Validator {
         }
 
         public static void main(String[] args) throws IOException, InterruptedException, NoSuchAlgorithmException,
-                        JoseException, ExecutionException, OperatorCreationException {
+                        JoseException, ExecutionException, OperatorCreationException, CertificateException,
+                        KeyStoreException {
                 final Path configDirPath = Path.of("config");
                 final Path configJson = configDirPath.resolve("config.json");
                 try {
@@ -373,11 +397,12 @@ public class Validator {
                 ConfBean config = new ConfBean();
                 try {
                         config = JSONObject.fromJson(Files.readString(configJson), ConfBean.class);
-                        Files.writeString(configJson, new JSONObject(config).toString(4), StandardCharsets.UTF_8);
                 } catch (JSONException je) {
                         System.out.println("failed to load configuration json, default will be used instead");
                         je.printStackTrace();
                 }
+
+                Files.writeString(configJson, new JSONObject(config).toString(4), StandardCharsets.UTF_8);
                 System.out.println("Getting PATH from STAGING:");
                 var validator = new Validator(config, GenUtils.generateKeyPair());
                 System.out.println(new JSONObject(validator.resourceLocations).toString(4));
@@ -389,8 +414,30 @@ public class Validator {
                 System.out.println(validator.newAccount());
                 System.out.print("Account location: ");
                 System.out.println(validator.accountLocation);
-                System.out.println("Getting Cert:");
-                System.out.println(validator.getCert());
+                System.out.println("Getting Cert: ");
+                var generator = KeyPairGenerator.getInstance("RSA");
+                generator.initialize(2048);
+                KeyPair sslKeyPair = generator.genKeyPair();
+                String cert = validator.getCert(sslKeyPair);
+                System.out.println(cert);
+                List<X509Certificate> certs = new ArrayList<>();
+
+                try (PEMParser reader = new PEMParser(new StringReader(cert))) {
+                        JcaX509CertificateConverter converter = new JcaX509CertificateConverter()
+                                        .setProvider(new BouncyCastleProvider());
+                        Object nextPem;
+                        while ((nextPem = reader.readObject()) != null) {
+                                certs.add(converter.getCertificate((X509CertificateHolder) nextPem));
+                        }
+                }
+
+                KeyStore store = KeyStore.getInstance("pkcs12");
+                store.load(null, new char[] {});
+                store.setKeyEntry("cert", sslKeyPair.getPrivate(),
+                                "password".toCharArray(), certs.toArray(X509Certificate[]::new));
+                try (var outputSteam = new FileOutputStream("key.p12")) {
+                        store.store(outputSteam, "password".toCharArray());
+                }
         }
 
 }

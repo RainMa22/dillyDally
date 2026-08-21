@@ -1,6 +1,7 @@
 package me.rainma22.dillydally.validation;
 
 import java.io.IOException;
+import java.security.Key;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
@@ -37,12 +38,10 @@ public class GenUtils {
         Security.addProvider(new BouncyCastleProvider());
     }
 
-    public static PKCS10CertificationRequest genCSR(ConfBean conf)
+    public static PKCS10CertificationRequest genCSR(ConfBean conf, KeyPair kp)
             throws OperatorCreationException, NoSuchAlgorithmException, IOException {
-        var generator = KeyPairGenerator.getInstance("RSA");
-        generator.initialize(2048);
-
-        KeyPair keyPair = generator.genKeyPair();
+        
+        KeyPair keyPair = kp;
 
         // Create a PKCS10 Certification Request Builder
         PKCS10CertificationRequestBuilder csrBuilder = new JcaPKCS10CertificationRequestBuilder(
