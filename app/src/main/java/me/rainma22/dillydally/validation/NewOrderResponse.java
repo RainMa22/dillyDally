@@ -2,7 +2,7 @@ package me.rainma22.dillydally.validation;
 
 import java.util.List;
 
-import org.jose4j.json.internal.json_simple.JSONObject;
+import org.json.JSONObject;
 
 public class NewOrderResponse {
     String status;
@@ -88,4 +88,3 @@ public class NewOrderResponse {
     }
 
 }
-

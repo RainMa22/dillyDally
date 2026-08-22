@@ -2,7 +2,6 @@ package me.rainma22.dillydally.validation;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.StringReader;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -13,7 +12,6 @@ import java.net.http.HttpResponse.BodyHandlers;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.security.Key;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.KeyStore;
@@ -23,9 +21,11 @@ import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Base64.Encoder;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicLong;
@@ -35,15 +35,11 @@ import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.openssl.PEMParser;
 import org.bouncycastle.operator.OperatorCreationException;
-import org.bouncycastle.util.io.pem.PemObject;
-import org.bouncycastle.util.io.pem.PemReader;
-import org.jose4j.base64url.Base64Url;
-import org.jose4j.jwk.JsonWebKey;
-import org.jose4j.lang.HashUtil;
-import org.jose4j.lang.JoseException;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import io.jsonwebtoken.JwtBuilder;
+import io.jsonwebtoken.security.Jwks;
 import me.rainma22.dillydally.conf.ConfBean;
 
 /**
@@ -52,6 +48,7 @@ import me.rainma22.dillydally.conf.ConfBean;
 public class Validator {
 
         private final HttpClient client = HttpClient.newHttpClient();
+        private final Encoder Base64Url = Base64.getUrlEncoder();
         private static final String LETS_ENCRYPT_STAGING_URL = "https://acme-staging-v02.api.letsencrypt.org/directory";
         private final ResourceLocationResponse resourceLocations;
         private String accountLocation = null;
@@ -88,21 +85,21 @@ public class Validator {
                                 .orElse(null);
         }
 
-        private String JSONStringof(ACMEJsonWebSignature sig) throws JoseException {
-                return sig.toJson().toString(4);
+        private String JSONStringof(JwtBuilder sig) {
+                return ACMEJWS.toJson(sig).toString(4);
         }
 
         private String newAccount()
-                        throws JoseException, IOException, InterruptedException, ExecutionException {
+                        throws IOException, InterruptedException, ExecutionException {
                 if (resourceLocations.getMeta().externalAccountRequired) {
                         throw new UnsupportedOperationException("External Account not supported");
                 }
                 if (nextNonce == null) {
                         nextNonce = newNonce();
                 }
-                var jwk = JsonWebKey.Factory.newJwk(kp.getPublic());
-                var jws = new ACMEJsonWebSignature(jwk, nextNonce, resourceLocations.getNewAccount(), kp.getPrivate());
-                jws.setPayload(new JSONObject(
+                var jwk = Jwks.builder().key(kp.getPublic()).build();
+                var jws = ACMEJWS.withJWK(jwk, nextNonce, resourceLocations.getNewAccount(), kp.getPrivate());
+                jws.content(new JSONObject(
                                 Map.of("termsOfServiceAgreed", true)).toString());
                 var reqBody = JSONStringof(jws);
                 var req = JoseHttpRequest.newBuilder(URI.create(resourceLocations.getNewAccount()))
@@ -116,7 +113,7 @@ public class Validator {
                                 }).get();
         }
 
-        public String newOrder() throws IOException, InterruptedException, JoseException, ExecutionException {
+        public String newOrder() throws IOException, InterruptedException, ExecutionException {
                 if (nextNonce == null) {
                         nextNonce = newNonce();
                 }
@@ -124,7 +121,7 @@ public class Validator {
                         newAccount();
                 }
 
-                var jws = new ACMEJsonWebSignature(accountLocation, nextNonce, resourceLocations.getNewOrder(),
+                var jws = ACMEJWS.withAccountLocation(accountLocation, nextNonce, resourceLocations.getNewOrder(),
                                 kp.getPrivate());
                 var identifiers = conf.getDomains()
                                 .stream()
@@ -136,7 +133,7 @@ public class Validator {
                                 }).toList();
                 var payload = new JSONObject(
                                 Map.of("identifiers", identifiers));
-                jws.setPayload(payload.toString());
+                jws.content(payload.toString());
                 var reqBody = JSONStringof(jws);
                 var req = JoseHttpRequest.newBuilder(URI.create(resourceLocations.getNewOrder()))
                                 .POST(BodyPublishers.ofString(reqBody))
@@ -152,8 +149,8 @@ public class Validator {
         }
 
         public AuthChallengeResponse getAuthChallenge(String authString)
-                        throws JoseException, InterruptedException, ExecutionException {
-                var jws = new ACMEJsonWebSignature(accountLocation, nextNonce, authString, kp.getPrivate());
+                        throws InterruptedException, ExecutionException {
+                var jws = ACMEJWS.withAccountLocation(accountLocation, nextNonce, authString, kp.getPrivate());
                 var req = JoseHttpRequest.newBuilder(URI.create(authString))
                                 .POST(BodyPublishers.ofString(JSONStringof(jws)))
                                 .build();
@@ -168,13 +165,13 @@ public class Validator {
         }
 
         public CompletableFuture<HttpResponse<String>> tryCompleteChallenge(String challengeUrl)
-                        throws IOException, InterruptedException, JoseException {
+                        throws IOException, InterruptedException {
                 URI challengeUri = URI.create(challengeUrl);
                 if (nextNonce == null)
                         newNonce();
-                var jws = new ACMEJsonWebSignature(accountLocation, nextNonce, challengeUrl,
+                var jws = ACMEJWS.withAccountLocation(accountLocation, nextNonce, challengeUrl,
                                 kp.getPrivate());
-                jws.setPayload("{}");
+                jws.content("{}");
                 var req = JoseHttpRequest.newBuilder(challengeUri)
                                 .POST(BodyPublishers.ofString(JSONStringof(jws)))
                                 .build();
@@ -185,15 +182,15 @@ public class Validator {
 
         public CompletableFuture<HttpResponse<String>> finalizeRequest(String finalizeUrl, KeyPair sslKeyPair)
                         throws IOException, InterruptedException,
-                        OperatorCreationException, NoSuchAlgorithmException, JoseException, ExecutionException {
+                        OperatorCreationException, NoSuchAlgorithmException, ExecutionException {
                 URI finalizeUri = URI.create(finalizeUrl);
                 if (nextNonce == null) {
                         newNonce();
                 }
 
-                var jws = new ACMEJsonWebSignature(accountLocation, nextNonce, finalizeUrl, kp.getPrivate());
-                jws.setPayload(new JSONObject(
-                                Map.of("CSR", Base64Url.encode(GenUtils.genCSR(conf, sslKeyPair).getEncoded())))
+                var jws = ACMEJWS.withAccountLocation(accountLocation, nextNonce, finalizeUrl, kp.getPrivate());
+                jws.content(new JSONObject(
+                                Map.of("CSR", Base64Url.encodeToString(GenUtils.genCSR(conf, sslKeyPair).getEncoded())))
                                 .toString());
 
                 var req = JoseHttpRequest.newBuilder(finalizeUri)
@@ -204,11 +201,11 @@ public class Validator {
         }
 
         public CompletableFuture<HttpResponse<String>> getOrder(String orderUrl)
-                        throws IOException, InterruptedException, JoseException {
+                        throws IOException, InterruptedException {
                 URI orderUri = URI.create(orderUrl);
                 if (nextNonce == null)
                         newNonce();
-                var jws = new ACMEJsonWebSignature(accountLocation, nextNonce, orderUrl, kp.getPrivate());
+                var jws = ACMEJWS.withAccountLocation(accountLocation, nextNonce, orderUrl, kp.getPrivate());
                 var req = JoseHttpRequest.newBuilder(orderUri)
                                 .POST(BodyPublishers.ofString(JSONStringof(jws)))
                                 .build();
@@ -217,7 +214,7 @@ public class Validator {
         }
 
         public String getCert(KeyPair sslKeyPair)
-                        throws IOException, InterruptedException, JoseException, ExecutionException,
+                        throws IOException, InterruptedException, ExecutionException,
                         OperatorCreationException, NoSuchAlgorithmException {
                 System.out.println("requesting new order:");
 
@@ -253,9 +250,9 @@ public class Validator {
                                                 "acme-challenge");
                                 Files.createDirectories(challengeFolderPath);
                                 var challengeFilePath = challengeFolderPath.resolve(http01Challenge.getToken());
-                                var thumbprint = Base64Url.encode(JsonWebKey.Factory.newJwk(kp.getPublic())
-                                                .calculateThumbprint(HashUtil.SHA_256)).replaceAll("=", "");
-
+                                var thumbprint = Jwks.builder().key(kp.getPublic()).build()
+                                                .thumbprint(Jwks.HASH.SHA256).toString()
+                                                .replaceAll("=", "");
                                 Files.createFile(challengeFilePath);
                                 Files.writeString(challengeFilePath, http01Challenge.getToken() + "." + thumbprint);
                                 System.out.printf("finished putting %s at %s/.well-known/acme-challenge/%s \n",
@@ -288,10 +285,12 @@ public class Validator {
                                         var authStatus = client.sendAsync(
                                                         JoseHttpRequest.newBuilder(URI.create(auth))
                                                                         .POST(BodyPublishers.ofString(
-                                                                                        JSONStringof(new ACMEJsonWebSignature(
-                                                                                                        accountLocation,
-                                                                                                        nextNonce, auth,
-                                                                                                        kp.getPrivate()))))
+                                                                                        JSONStringof(ACMEJWS
+                                                                                                        .withAccountLocation(
+                                                                                                                        accountLocation,
+                                                                                                                        nextNonce,
+                                                                                                                        auth,
+                                                                                                                        kp.getPrivate()))))
                                                                         .build(),
                                                         BodyHandlers.ofString())
                                                         .thenApplyAsync(this::processNonce)
@@ -354,7 +353,7 @@ public class Validator {
                                 JSONObject orderJson = new JSONObject(r.body());
                                 var status = orderJson.optString("status", "");
                                 if (!status.equals(ResponseConstants.VALID)) {
-                                        System.out.print("Waiting for the order rto be valid... \n");
+                                        System.out.print("Waiting for the order to be valid... \n");
                                         try {
                                                 waitTimeSec.set(r.headers().firstValueAsLong("Retry-After")
                                                                 .orElse(1));
@@ -374,7 +373,7 @@ public class Validator {
                 return client.sendAsync(JoseHttpRequest.newBuilder(URI.create(certUrl))
                                 .header("Accept", "application/pem-certificate-chain")
                                 .POST(BodyPublishers.ofString(JSONStringof(
-                                                new ACMEJsonWebSignature(accountLocation, nextNonce, certUrl,
+                                                ACMEJWS.withAccountLocation(accountLocation, nextNonce, certUrl,
                                                                 kp.getPrivate()))))
                                 .build(),
                                 BodyHandlers.ofString())
@@ -384,7 +383,7 @@ public class Validator {
         }
 
         public static void main(String[] args) throws IOException, InterruptedException, NoSuchAlgorithmException,
-                        JoseException, ExecutionException, OperatorCreationException, CertificateException,
+                        ExecutionException, OperatorCreationException, CertificateException,
                         KeyStoreException {
                 final Path configDirPath = Path.of("config");
                 final Path configJson = configDirPath.resolve("config.json");
