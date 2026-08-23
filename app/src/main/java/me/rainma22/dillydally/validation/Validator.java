@@ -49,7 +49,6 @@ public class Validator {
 
         private final HttpClient client = HttpClient.newHttpClient();
         private final Encoder Base64Url = Base64.getUrlEncoder();
-        private static final String LETS_ENCRYPT_STAGING_URL = "https://acme-staging-v02.api.letsencrypt.org/directory";
         private final ResourceLocationResponse resourceLocations;
         private String accountLocation = null;
         private String nextNonce = null;
@@ -67,7 +66,7 @@ public class Validator {
                 this.conf = conf;
                 this.kp = kp;
                 resourceLocations = new JSONObject(
-                                client.send(HttpRequest.newBuilder(URI.create(LETS_ENCRYPT_STAGING_URL))
+                                client.send(HttpRequest.newBuilder(URI.create(conf.getServerUrl()))
                                                 .GET()
                                                 .build(),
                                                 HttpResponse.BodyHandlers.ofString())
@@ -114,13 +113,7 @@ public class Validator {
         }
 
         public String newOrder() throws IOException, InterruptedException, ExecutionException {
-                if (nextNonce == null) {
-                        nextNonce = newNonce();
-                }
-                if (accountLocation == null) {
-                        newAccount();
-                }
-
+                
                 var jws = ACMEJWS.withAccountLocation(accountLocation, nextNonce, resourceLocations.getNewOrder(),
                                 kp.getPrivate());
                 var identifiers = conf.getDomains()
