@@ -7,9 +7,11 @@ import java.net.http.HttpClient.Redirect;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse.BodyHandlers;
 
+import io.jsonwebtoken.JwtBuilder;
+
 public class Utils {
 
-    public static boolean webAccessible(URI uri) {
+        public static boolean webAccessible(URI uri) {
                 try {
                         var client = HttpClient.newBuilder()
                                         .followRedirects(Redirect.ALWAYS)
@@ -26,5 +28,9 @@ public class Utils {
                 }
                 return false;
         }
-    
+
+        public static String JSONStringof(JwtBuilder sig) {
+                return ACMEJWS.toJson(sig).toString(4);
+        }
+
 }

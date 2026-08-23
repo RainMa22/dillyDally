@@ -9,7 +9,15 @@ public class ConfBean {
     private int lastRenew = 0;
     private int httpPort = 80;
     private int httpsPort = 443;
-    private boolean staging = true;
+    private String serverUrl = "https://acme-staging-v02.api.letsencrypt.org/directory";
+    public String getServerUrl() {
+        return serverUrl;
+    }
+
+    public void setServerUrl(String serverUrl) {
+        this.serverUrl = serverUrl;
+    }
+
     private HttpChallengeConfBean httpChallengeConf = new HttpChallengeConfBean();
 
     private List<String> domains = List.of(
@@ -38,15 +46,7 @@ public class ConfBean {
     public void setHttpsPort(int httpsPort) {
         this.httpsPort = httpsPort;
     }
-
-    public boolean isStaging() {
-        return staging;
-    }
-
-    public void setStaging(boolean staging) {
-        this.staging = staging;
-    }
-
+    
     public List<String> getDomains() {
         return domains;
     }
