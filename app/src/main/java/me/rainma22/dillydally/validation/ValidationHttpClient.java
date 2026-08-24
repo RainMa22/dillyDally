@@ -17,6 +17,10 @@ public class ValidationHttpClient {
         this.resourceLocations = resourceLocations;
     }
 
+    public <T> HttpResponse<T> send(HttpRequest req, BodyHandler<T> handler) throws IOException, InterruptedException {
+        return processNonce(client.send(req, handler));
+    }
+
     public <T> CompletableFuture<HttpResponse<T>> sendAsync(HttpRequest req, BodyHandler<T> handler)
             throws IOException, InterruptedException {
         return client.sendAsync(req, handler)
@@ -41,6 +45,8 @@ public class ValidationHttpClient {
     private <T> HttpResponse<T> processNonce(HttpResponse<T> res) {
         _nextNonce = res.headers().firstValue("Replay-Nonce")
                 .orElse(null);
+        // System.out.println(res);
+        // System.out.println(res.body());
         return res;
     }
 }

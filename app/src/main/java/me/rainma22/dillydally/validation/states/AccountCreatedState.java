@@ -67,7 +67,7 @@ public class AccountCreatedState implements ValidatorState {
                     .thenApply(res -> {
                         var orderLocation = res.headers().firstValue("Location").get();
                         var newOrderResponse = JSONObject.fromJson(res.body(), NewOrderResponse.class);
-                        return new OrderCreatedState(kp, resourceLocations, client, orderLocation, orderLocation, 
+                        return new OrderCreatedState(kp, resourceLocations, client, accountLocation, orderLocation, 
                             LocalDateTime.from(DateTimeFormatter.
                                 ISO_DATE_TIME.parse(newOrderResponse.getExpires())), 
                                 newOrderResponse, conf);

@@ -1,10 +1,9 @@
 package me.rainma22.dillydally.conf;
 
-import java.io.File;
-
 public class HttpChallengeConfBean {
     private String type = "file";
     private String pathToWebRootDir = "res/static";
+    private int nPollingRetries = 10;
 
     public String getType() {
         return type;
@@ -20,6 +19,14 @@ public class HttpChallengeConfBean {
 
     public void setPathToWebRootDir(String pathToWebRootDir) {
         this.pathToWebRootDir = pathToWebRootDir;
+    }
+
+    public int getnPollingRetries() {
+        return nPollingRetries;
+    }
+
+    public void setnPollingRetries(int nPollingRetries) {
+        this.nPollingRetries = nPollingRetries;
     }
 
 }

@@ -2,6 +2,7 @@ package me.rainma22.dillydally.validation.states;
 
 import java.security.KeyPair;
 import java.time.LocalDateTime;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 
 import me.rainma22.dillydally.conf.ConfBean;
@@ -40,15 +41,16 @@ public class OrderCreatedState implements ValidatorState {
 
     @Override
     public ValidatorState nextState() {
-        if(orderExpiry.isBefore(LocalDateTime.now())) {
+        if (orderExpiry.isBefore(LocalDateTime.now())) {
             // retry by regressing back to new Order
             return new AccountCreatedState(kp, resourceLocations, client, accountLocation, conf);
         }
         try {
             var authorizations = orderResponse.getAuthorizations();
 
-            return new CompletingAuthorizationState(kp, resourceLocations,client,accountLocation,orderLocation,
-                orderExpiry, orderResponse, authorizations, new ArrayList<String>(), conf);
+            return new CompletingAuthorizationState(kp, resourceLocations, client,
+                    accountLocation, orderLocation,
+                    orderExpiry, orderResponse, new ArrayDeque<>(authorizations), new ArrayList<String>(), conf);
         } catch (Exception e) {
             return new FailedState(e);
         }
