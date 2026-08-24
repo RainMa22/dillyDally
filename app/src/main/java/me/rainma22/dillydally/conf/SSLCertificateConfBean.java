@@ -8,10 +8,11 @@ public class SSLCertificateConfBean {
     private String pathToWebRootDir = "res/static";
     private int nPollingRetries = 10;
     private String pathToACMEPEM = "config/acme.pem";
-    private String pathToSSLP12 = "config/ssl.p12";
+    private String pathToSSLKeyPEM = "config/key.pem";
+    private String pathToSSLCertPEM = "config/cert.pem";
+
     private String acmePassword = random.nextAlphanumeric(22);
     private String sslKeyPassword = random.nextAlphanumeric(22);
-    private String keyStorePassword = random.nextAlphanumeric(22);
 
     public String getType() {
         return type;
@@ -53,14 +54,6 @@ public class SSLCertificateConfBean {
         this.sslKeyPassword = sslKeyPassword;
     }
 
-    public String getKeyStorePassword() {
-        return keyStorePassword;
-    }
-
-    public void setKeyStorePassword(String sslKeyStorePassword) {
-        this.keyStorePassword = sslKeyStorePassword;
-    }
-
     public static RandomStringUtils getRandom() {
         return random;
     }
@@ -73,12 +66,20 @@ public class SSLCertificateConfBean {
         this.pathToACMEPEM = pathToACMEPEM;
     }
 
-    public String getPathToSSLP12() {
-        return pathToSSLP12;
+    public String getPathToSSLKeyPEM() {
+        return pathToSSLKeyPEM;
     }
 
-    public void setPathToSSLP12(String pathToSSLP12) {
-        this.pathToSSLP12 = pathToSSLP12;
+    public void setPathToSSLKeyPEM(String pathToSSLP12) {
+        this.pathToSSLKeyPEM = pathToSSLP12;
+    }
+
+    public String getPathToSSLCertPEM() {
+        return pathToSSLCertPEM;
+    }
+
+    public void setPathToSSLCertPEM(String pathToSSLCertPEM) {
+        this.pathToSSLCertPEM = pathToSSLCertPEM;
     }
 
 }

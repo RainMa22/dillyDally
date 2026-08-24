@@ -1,6 +1,5 @@
 package me.rainma22.dillydally.sslcert;
 
-import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.net.URI;
@@ -11,7 +10,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.KeyPair;
-import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
@@ -105,15 +103,19 @@ public class CertificateGetter {
                         CompletedState state = (CompletedState) certGetter.currState;
                         KeyPair sslKeyPair = state.getSslKeyPair();
                         var certs = state.getCertChain();
-                        KeyStore store = KeyStore.getInstance("pkcs12");
-                        store.load(null, new char[] {});
-                        store.setKeyEntry("ssl", sslKeyPair.getPrivate(),
-                                        sslConf.getSslKeyPassword().toCharArray(), certs);
-                        Path sslPath = Path.of(sslConf.getPathToSSLP12());
-                        Files.createDirectories(sslPath.getParent());
-                        try (var outputSteam = new FileOutputStream(sslPath.toFile())) {
-                                store.store(outputSteam,
-                                                config.getSslCertificateConf().getKeyStorePassword().toCharArray());
+                        Path sslKeyPath = Path.of(sslConf.getPathToSSLKeyPEM());
+                        Files.createDirectories(sslKeyPath.getParent());
+                        try (var sslKeyOut = new JcaPEMWriter(new FileWriter(sslKeyPath.toFile()))) {
+                                PEMEncryptor encryptor = new JcePEMEncryptorBuilder("AES-256-CBC")
+                                                .build(sslConf.getSslKeyPassword().toCharArray());
+                                sslKeyOut.writeObject(sslKeyPair.getPrivate(), encryptor);
+                        }
+                        Path sslCertPath = Path.of(sslConf.getPathToSSLCertPEM());
+                        Files.createDirectories(sslCertPath.getParent());
+                        try (var sslCertOut = new JcaPEMWriter(new FileWriter(sslCertPath.toFile()))) {
+                                for (var cert : certs) {
+                                        sslCertOut.writeObject(cert);
+                                }
                         }
                 } else {
                         throw new IOException(((FailedState) certGetter.currState).getError());
