@@ -69,7 +69,7 @@ public class OrderValidationState implements CertificateGetterState {
             return new AccountCreatedState(kp, resourceLocations, client, accountLocation, conf);
         }
         // poll until order is validated
-        int nRetries = conf.getHttpChallengeConf().getnPollingRetries();
+        int nRetries = conf.getSslCertificateConf().getnPollingRetries();
         String status = ResponseConstants.PENDING;
         NewOrderResponse orderValidationResponse = orderResponse;
         long waitTimeSec = 0;

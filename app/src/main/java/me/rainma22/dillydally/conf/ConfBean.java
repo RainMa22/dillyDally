@@ -6,7 +6,6 @@ import java.util.List;
  *
  */
 public class ConfBean {
-    private int lastRenew = 0;
     private int httpPort = 80;
     private int httpsPort = 443;
     private String serverUrl = "https://acme-staging-v02.api.letsencrypt.org/directory";
@@ -18,18 +17,10 @@ public class ConfBean {
         this.serverUrl = serverUrl;
     }
 
-    private HttpChallengeConfBean httpChallengeConf = new HttpChallengeConfBean();
+    private SSLCertificateConfBean sslCertificateConf = new SSLCertificateConfBean();
 
     private List<String> domains = List.of(
             "this.is.a.test.com");
-
-    public int getLastRenew() {
-        return lastRenew;
-    }
-
-    public void setLastRenew(int lastRenew) {
-        this.lastRenew = lastRenew;
-    }
 
     public int getHttpPort() {
         return httpPort;
@@ -55,12 +46,12 @@ public class ConfBean {
         this.domains = domains;
     }
 
-    public HttpChallengeConfBean getHttpChallengeConf() {
-        return httpChallengeConf;
+    public SSLCertificateConfBean getSslCertificateConf() {
+        return sslCertificateConf;
     }
 
-    public void setHttpChallengeConf(HttpChallengeConfBean httpChallengeConf) {
-        this.httpChallengeConf = httpChallengeConf;
+    public void setSslCertificateConf(SSLCertificateConfBean sslCertificateConf) {
+        this.sslCertificateConf = sslCertificateConf;
     }
 
 }

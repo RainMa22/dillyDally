@@ -11,13 +11,13 @@ import java.nio.file.Path;
 import java.security.KeyPair;
 
 import io.jsonwebtoken.security.Jwks;
-import me.rainma22.dillydally.conf.HttpChallengeConfBean;
+import me.rainma22.dillydally.conf.SSLCertificateConfBean;
 import me.rainma22.dillydally.sslcert.OrderChallenge;
 
 public class ChallengeCompletor {
-    private HttpChallengeConfBean httpConf;
+    private SSLCertificateConfBean httpConf;
 
-    public ChallengeCompletor(HttpChallengeConfBean httpChallengeConfBean) throws UnsupportedOperationException {
+    public ChallengeCompletor(SSLCertificateConfBean httpChallengeConfBean) throws UnsupportedOperationException {
         httpConf = httpChallengeConfBean;
         if (!httpChallengeConfBean.getType().equalsIgnoreCase("file")) {
             throw new UnsupportedOperationException(

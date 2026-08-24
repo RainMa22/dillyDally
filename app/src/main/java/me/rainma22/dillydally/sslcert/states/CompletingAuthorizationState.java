@@ -77,7 +77,7 @@ public class CompletingAuthorizationState implements CertificateGetterState {
 
         return CompletableFuture.runAsync(() -> {
             String status = "";
-            int nRetries = conf.getHttpChallengeConf().getnPollingRetries();
+            int nRetries = conf.getSslCertificateConf().getnPollingRetries();
             long retry = 0;
             do {
                 try {
@@ -144,7 +144,7 @@ public class CompletingAuthorizationState implements CertificateGetterState {
                     .findAny()
                     .orElseThrow(() -> new UnsupportedOperationException("only http-01 challenges supported for now"));
             if (ResponseConstants.PENDING.equals(http01Challenge.getStatus())) {
-                ChallengeCompletor completor = new ChallengeCompletor(conf.getHttpChallengeConf());
+                ChallengeCompletor completor = new ChallengeCompletor(conf.getSslCertificateConf());
                 completor.completeChallenge(http01Challenge, kp);
                 if (!completor.isUriAccessible(URI.create(http01Challenge.getUrl()))) {
                     throw new IOException(

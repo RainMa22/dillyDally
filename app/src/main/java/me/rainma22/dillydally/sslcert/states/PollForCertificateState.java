@@ -65,7 +65,7 @@ public class PollForCertificateState implements CertificateGetterState {
         if(orderExpiry.isBefore(LocalDateTime.now())){
             return new AccountCreatedState(kp, resourceLocations, client, accountLocation, conf);
         }
-        int nRetries = conf.getHttpChallengeConf().getnPollingRetries();
+        int nRetries = conf.getSslCertificateConf().getnPollingRetries();
         long retrySec = 0;
         while (nRetries-- > 0) {
             try {
