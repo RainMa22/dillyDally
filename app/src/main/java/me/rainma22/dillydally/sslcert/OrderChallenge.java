@@ -1,4 +1,4 @@
-package me.rainma22.dillydally.validation;
+package me.rainma22.dillydally.sslcert;
 
 import java.util.List;
 

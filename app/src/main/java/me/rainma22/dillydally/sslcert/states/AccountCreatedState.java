@@ -1,4 +1,4 @@
-package me.rainma22.dillydally.validation.states;
+package me.rainma22.dillydally.sslcert.states;
 
 import java.net.URI;
 import java.net.http.HttpRequest.BodyPublishers;
@@ -11,14 +11,14 @@ import java.util.Map;
 import org.json.JSONObject;
 
 import me.rainma22.dillydally.conf.ConfBean;
-import me.rainma22.dillydally.validation.ACMEJWS;
-import me.rainma22.dillydally.validation.JoseHttpRequest;
-import me.rainma22.dillydally.validation.NewOrderResponse;
-import me.rainma22.dillydally.validation.OrderIdentifier;
-import me.rainma22.dillydally.validation.ResourceLocationResponse;
-import me.rainma22.dillydally.validation.ValidationHttpClient;
+import me.rainma22.dillydally.sslcert.ACMEJWS;
+import me.rainma22.dillydally.sslcert.JoseHttpRequest;
+import me.rainma22.dillydally.sslcert.NewOrderResponse;
+import me.rainma22.dillydally.sslcert.OrderIdentifier;
+import me.rainma22.dillydally.sslcert.ResourceLocationResponse;
+import me.rainma22.dillydally.sslcert.ValidationHttpClient;
 
-public class AccountCreatedState implements ValidatorState {
+public class AccountCreatedState implements CertificateGetterState {
     private KeyPair kp;
     private ResourceLocationResponse resourceLocations;
     private ValidationHttpClient client;
@@ -40,7 +40,7 @@ public class AccountCreatedState implements ValidatorState {
     }
 
     @Override
-    public ValidatorState nextState() {
+    public CertificateGetterState nextState() {
         try {
             // create order
             var jws = ACMEJWS.withAccountLocation(accountLocation, client.nextNonce(), resourceLocations.getNewOrder(),

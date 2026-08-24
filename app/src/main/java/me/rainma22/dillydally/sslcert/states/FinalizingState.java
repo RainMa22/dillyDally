@@ -1,4 +1,4 @@
-package me.rainma22.dillydally.validation.states;
+package me.rainma22.dillydally.sslcert.states;
 
 import java.io.IOException;
 import java.net.URI;
@@ -14,18 +14,18 @@ import java.util.Map;
 import org.json.JSONObject;
 
 import me.rainma22.dillydally.conf.ConfBean;
-import me.rainma22.dillydally.validation.ACMEJWS;
-import me.rainma22.dillydally.validation.GenUtils;
-import me.rainma22.dillydally.validation.JoseHttpRequest;
-import me.rainma22.dillydally.validation.NewOrderResponse;
-import me.rainma22.dillydally.validation.ResourceLocationResponse;
-import me.rainma22.dillydally.validation.ResponseConstants;
-import me.rainma22.dillydally.validation.ValidationHttpClient;
+import me.rainma22.dillydally.sslcert.ACMEJWS;
+import me.rainma22.dillydally.sslcert.GenUtils;
+import me.rainma22.dillydally.sslcert.JoseHttpRequest;
+import me.rainma22.dillydally.sslcert.NewOrderResponse;
+import me.rainma22.dillydally.sslcert.ResourceLocationResponse;
+import me.rainma22.dillydally.sslcert.ResponseConstants;
+import me.rainma22.dillydally.sslcert.ValidationHttpClient;
 
 /**
  * FinalizingState
  */
-public class FinalizingState implements ValidatorState {
+public class FinalizingState implements CertificateGetterState {
     private KeyPair kp;
     private ResourceLocationResponse resourceLocations;
     private ValidationHttpClient client;
@@ -54,7 +54,7 @@ public class FinalizingState implements ValidatorState {
     }
 
     @Override
-    public ValidatorState nextState() {
+    public CertificateGetterState nextState() {
         try {
             Encoder Base64Url = Base64.getUrlEncoder();
             KeyPairGenerator gen = KeyPairGenerator.getInstance("RSA");

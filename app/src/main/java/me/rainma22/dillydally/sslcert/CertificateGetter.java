@@ -1,4 +1,4 @@
-package me.rainma22.dillydally.validation;
+package me.rainma22.dillydally.sslcert;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -20,18 +20,18 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import me.rainma22.dillydally.conf.ConfBean;
-import me.rainma22.dillydally.validation.states.CompletedState;
-import me.rainma22.dillydally.validation.states.FailedState;
-import me.rainma22.dillydally.validation.states.InitializedState;
-import me.rainma22.dillydally.validation.states.ValidatorState;
+import me.rainma22.dillydally.sslcert.states.CompletedState;
+import me.rainma22.dillydally.sslcert.states.FailedState;
+import me.rainma22.dillydally.sslcert.states.InitializedState;
+import me.rainma22.dillydally.sslcert.states.CertificateGetterState;
 
 /**
  *
  */
-public class Validator {
-        private ValidatorState currState;
+public class CertificateGetter {
+        private CertificateGetterState currState;
 
-        public Validator(ConfBean conf, KeyPair kp) throws IOException, InterruptedException {
+        public CertificateGetter(ConfBean conf, KeyPair kp) throws IOException, InterruptedException {
                 HttpClient client = HttpClient.newHttpClient();
                 var resourceLocations = new JSONObject(
                                 client.send(HttpRequest.newBuilder(URI.create(conf.getServerUrl()))
@@ -63,7 +63,7 @@ public class Validator {
                 }
                 Files.writeString(configJson, new JSONObject(config).toString(4), StandardCharsets.UTF_8);
 
-                Validator validator = new Validator(config, GenUtils.generateKeyPair());
+                CertificateGetter validator = new CertificateGetter(config, GenUtils.generateKeyPair());
 
                 while (!validator.currState.isFinal()) {
                         validator.currState = validator.currState.nextState();

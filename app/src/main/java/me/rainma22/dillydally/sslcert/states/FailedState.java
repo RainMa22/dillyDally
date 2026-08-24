@@ -1,6 +1,6 @@
-package me.rainma22.dillydally.validation.states;
+package me.rainma22.dillydally.sslcert.states;
 
-public class FailedState implements ValidatorState {
+public class FailedState implements CertificateGetterState {
 
     private Exception error;
 
@@ -14,7 +14,7 @@ public class FailedState implements ValidatorState {
     }
 
     @Override
-    public ValidatorState nextState() {
+    public CertificateGetterState nextState() {
         return new FailedState(new UnsupportedOperationException("Attempted to get nextState on a Failed State", 
         error));
     }

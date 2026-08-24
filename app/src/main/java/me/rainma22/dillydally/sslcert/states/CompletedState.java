@@ -1,4 +1,4 @@
-package me.rainma22.dillydally.validation.states;
+package me.rainma22.dillydally.sslcert.states;
 
 import java.security.KeyPair;
 import java.security.cert.X509Certificate;
@@ -8,7 +8,7 @@ import me.rainma22.dillydally.conf.ConfBean;
 /**
  * CompletedState
  */
-public class CompletedState implements ValidatorState {
+public class CompletedState implements CertificateGetterState {
     private KeyPair kp;
     private String accountLocation;
     private KeyPair sslKeyPair;
@@ -30,7 +30,7 @@ public class CompletedState implements ValidatorState {
     }
 
     @Override
-    public ValidatorState nextState() {
+    public CertificateGetterState nextState() {
         return this; // ambiguous
     }
 

@@ -1,4 +1,4 @@
-package me.rainma22.dillydally.validation.states;
+package me.rainma22.dillydally.sslcert.states;
 
 import java.net.URI;
 import java.net.http.HttpRequest;
@@ -10,12 +10,12 @@ import org.json.JSONObject;
 
 import io.jsonwebtoken.security.Jwks;
 import me.rainma22.dillydally.conf.ConfBean;
-import me.rainma22.dillydally.validation.ACMEJWS;
-import me.rainma22.dillydally.validation.JoseHttpRequest;
-import me.rainma22.dillydally.validation.ResourceLocationResponse;
-import me.rainma22.dillydally.validation.ValidationHttpClient;
+import me.rainma22.dillydally.sslcert.ACMEJWS;
+import me.rainma22.dillydally.sslcert.JoseHttpRequest;
+import me.rainma22.dillydally.sslcert.ResourceLocationResponse;
+import me.rainma22.dillydally.sslcert.ValidationHttpClient;
 
-public class InitializedState implements ValidatorState {
+public class InitializedState implements CertificateGetterState {
     private KeyPair kp;
     private ResourceLocationResponse resourceLocations;
     private ValidationHttpClient client;
@@ -28,7 +28,7 @@ public class InitializedState implements ValidatorState {
     }
 
     @Override
-    public ValidatorState nextState() {
+    public CertificateGetterState nextState() {
         try {
             // send new account request
             if (resourceLocations.getMeta().isExternalAccountRequired()) {

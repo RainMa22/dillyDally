@@ -1,4 +1,4 @@
-package me.rainma22.dillydally.validation.states;
+package me.rainma22.dillydally.sslcert.states;
 
 import java.io.IOException;
 import java.io.StringReader;
@@ -22,17 +22,17 @@ import org.bouncycastle.openssl.PEMParser;
 import org.json.JSONObject;
 
 import me.rainma22.dillydally.conf.ConfBean;
-import me.rainma22.dillydally.validation.ACMEJWS;
-import me.rainma22.dillydally.validation.JoseHttpRequest;
-import me.rainma22.dillydally.validation.NewOrderResponse;
-import me.rainma22.dillydally.validation.ResourceLocationResponse;
-import me.rainma22.dillydally.validation.ResponseConstants;
-import me.rainma22.dillydally.validation.ValidationHttpClient;
+import me.rainma22.dillydally.sslcert.ACMEJWS;
+import me.rainma22.dillydally.sslcert.JoseHttpRequest;
+import me.rainma22.dillydally.sslcert.NewOrderResponse;
+import me.rainma22.dillydally.sslcert.ResourceLocationResponse;
+import me.rainma22.dillydally.sslcert.ResponseConstants;
+import me.rainma22.dillydally.sslcert.ValidationHttpClient;
 
 /**
  * PollForCertificateState
  */
-public class PollForCertificateState implements ValidatorState {
+public class PollForCertificateState implements CertificateGetterState {
     private KeyPair kp;
     private ResourceLocationResponse resourceLocations;
     private ValidationHttpClient client;
@@ -61,7 +61,7 @@ public class PollForCertificateState implements ValidatorState {
     }
 
     @Override
-    public ValidatorState nextState() {
+    public CertificateGetterState nextState() {
         if(orderExpiry.isBefore(LocalDateTime.now())){
             return new AccountCreatedState(kp, resourceLocations, client, accountLocation, conf);
         }

@@ -1,4 +1,4 @@
-package me.rainma22.dillydally.validation.states;
+package me.rainma22.dillydally.sslcert.states;
 
 import java.security.KeyPair;
 import java.time.LocalDateTime;
@@ -6,11 +6,11 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 
 import me.rainma22.dillydally.conf.ConfBean;
-import me.rainma22.dillydally.validation.NewOrderResponse;
-import me.rainma22.dillydally.validation.ResourceLocationResponse;
-import me.rainma22.dillydally.validation.ValidationHttpClient;
+import me.rainma22.dillydally.sslcert.NewOrderResponse;
+import me.rainma22.dillydally.sslcert.ResourceLocationResponse;
+import me.rainma22.dillydally.sslcert.ValidationHttpClient;
 
-public class OrderCreatedState implements ValidatorState {
+public class OrderCreatedState implements CertificateGetterState {
 
     private KeyPair kp;
     private ResourceLocationResponse resourceLocations;
@@ -40,7 +40,7 @@ public class OrderCreatedState implements ValidatorState {
     }
 
     @Override
-    public ValidatorState nextState() {
+    public CertificateGetterState nextState() {
         if (orderExpiry.isBefore(LocalDateTime.now())) {
             // retry by regressing back to new Order
             return new AccountCreatedState(kp, resourceLocations, client, accountLocation, conf);

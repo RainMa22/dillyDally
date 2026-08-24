@@ -1,4 +1,4 @@
-package me.rainma22.dillydally.validation.challengecompletion;
+package me.rainma22.dillydally.sslcert.challengecompletion;
 
 import java.io.IOException;
 import java.net.URI;
@@ -12,7 +12,7 @@ import java.security.KeyPair;
 
 import io.jsonwebtoken.security.Jwks;
 import me.rainma22.dillydally.conf.HttpChallengeConfBean;
-import me.rainma22.dillydally.validation.OrderChallenge;
+import me.rainma22.dillydally.sslcert.OrderChallenge;
 
 public class ChallengeCompletor {
     private HttpChallengeConfBean httpConf;

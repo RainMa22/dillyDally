@@ -1,4 +1,4 @@
-package me.rainma22.dillydally.validation.states;
+package me.rainma22.dillydally.sslcert.states;
 
 import java.io.IOException;
 import java.net.URI;
@@ -17,17 +17,17 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import me.rainma22.dillydally.conf.ConfBean;
-import me.rainma22.dillydally.validation.ACMEJWS;
-import me.rainma22.dillydally.validation.AuthChallengeResponse;
-import me.rainma22.dillydally.validation.JoseHttpRequest;
-import me.rainma22.dillydally.validation.NewOrderResponse;
-import me.rainma22.dillydally.validation.OrderChallenge;
-import me.rainma22.dillydally.validation.ResourceLocationResponse;
-import me.rainma22.dillydally.validation.ResponseConstants;
-import me.rainma22.dillydally.validation.ValidationHttpClient;
-import me.rainma22.dillydally.validation.challengecompletion.ChallengeCompletor;
+import me.rainma22.dillydally.sslcert.ACMEJWS;
+import me.rainma22.dillydally.sslcert.AuthChallengeResponse;
+import me.rainma22.dillydally.sslcert.JoseHttpRequest;
+import me.rainma22.dillydally.sslcert.NewOrderResponse;
+import me.rainma22.dillydally.sslcert.OrderChallenge;
+import me.rainma22.dillydally.sslcert.ResourceLocationResponse;
+import me.rainma22.dillydally.sslcert.ResponseConstants;
+import me.rainma22.dillydally.sslcert.ValidationHttpClient;
+import me.rainma22.dillydally.sslcert.challengecompletion.ChallengeCompletor;
 
-public class CompletingAuthorizationState implements ValidatorState {
+public class CompletingAuthorizationState implements CertificateGetterState {
 
     private KeyPair kp;
     private ResourceLocationResponse resourceLocations;
@@ -112,7 +112,7 @@ public class CompletingAuthorizationState implements ValidatorState {
     }
 
     @Override
-    public ValidatorState nextState() {
+    public CertificateGetterState nextState() {
         if (orderExpiry.isBefore(LocalDateTime.now())) {
             // if expired: retry by regressing back to new Order
             return new AccountCreatedState(kp, resourceLocations, client, accountLocation, conf);
