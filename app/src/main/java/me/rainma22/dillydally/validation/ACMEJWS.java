@@ -40,4 +40,8 @@ public class ACMEJWS {
     public static JSONObject toJson(JwtBuilder jws) {
         return toJson(jws.compact());
     }
+
+    public static String toString(JwtBuilder jws){
+        return toJson(jws).toString();
+    }
 }

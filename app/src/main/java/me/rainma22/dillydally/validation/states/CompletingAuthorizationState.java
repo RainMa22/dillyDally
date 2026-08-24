@@ -24,7 +24,6 @@ import me.rainma22.dillydally.validation.NewOrderResponse;
 import me.rainma22.dillydally.validation.OrderChallenge;
 import me.rainma22.dillydally.validation.ResourceLocationResponse;
 import me.rainma22.dillydally.validation.ResponseConstants;
-import me.rainma22.dillydally.validation.Utils;
 import me.rainma22.dillydally.validation.ValidationHttpClient;
 import me.rainma22.dillydally.validation.challengecompletion.ChallengeCompletor;
 
@@ -60,7 +59,7 @@ public class CompletingAuthorizationState implements ValidatorState {
             throws InterruptedException, ExecutionException, IOException {
         var jws = ACMEJWS.withAccountLocation(accountLocation, client.nextNonce(), authString, kp.getPrivate());
         var req = JoseHttpRequest.newBuilder(URI.create(authString))
-                .POST(BodyPublishers.ofString(Utils.JSONStringof(jws)))
+                .POST(BodyPublishers.ofString(ACMEJWS.toString(jws)))
                 .build();
         var res = client.send(req, BodyHandlers.ofString());
         return JSONObject.fromJson(res.body(), AuthChallengeResponse.class);
@@ -73,7 +72,7 @@ public class CompletingAuthorizationState implements ValidatorState {
                 kp.getPrivate());
         jws.content("{}");
         var req = JoseHttpRequest.newBuilder(challengeUri)
-                .POST(BodyPublishers.ofString(Utils.JSONStringof(jws)))
+                .POST(BodyPublishers.ofString(ACMEJWS.toString(jws)))
                 .build();
 
         return CompletableFuture.runAsync(() -> {

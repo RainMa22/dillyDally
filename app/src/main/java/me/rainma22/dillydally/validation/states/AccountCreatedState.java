@@ -16,7 +16,6 @@ import me.rainma22.dillydally.validation.JoseHttpRequest;
 import me.rainma22.dillydally.validation.NewOrderResponse;
 import me.rainma22.dillydally.validation.OrderIdentifier;
 import me.rainma22.dillydally.validation.ResourceLocationResponse;
-import me.rainma22.dillydally.validation.Utils;
 import me.rainma22.dillydally.validation.ValidationHttpClient;
 
 public class AccountCreatedState implements ValidatorState {
@@ -57,7 +56,7 @@ public class AccountCreatedState implements ValidatorState {
             var payload = new JSONObject(
                     Map.of("identifiers", identifiers));
             jws.content(payload.toString());
-            var reqBody = Utils.JSONStringof(jws);
+            var reqBody = ACMEJWS.toString(jws);
             var req = JoseHttpRequest.newBuilder(URI.create(resourceLocations.getNewOrder()))
                     .POST(BodyPublishers.ofString(reqBody))
                     .build();

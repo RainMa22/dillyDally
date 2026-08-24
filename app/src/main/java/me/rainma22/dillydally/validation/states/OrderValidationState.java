@@ -19,7 +19,6 @@ import me.rainma22.dillydally.validation.JoseHttpRequest;
 import me.rainma22.dillydally.validation.NewOrderResponse;
 import me.rainma22.dillydally.validation.ResourceLocationResponse;
 import me.rainma22.dillydally.validation.ResponseConstants;
-import me.rainma22.dillydally.validation.Utils;
 import me.rainma22.dillydally.validation.ValidationHttpClient;
 
 /**
@@ -58,7 +57,7 @@ public class OrderValidationState implements ValidatorState {
         URI orderUri = URI.create(orderUrl);
         var jws = ACMEJWS.withAccountLocation(accountLocation, client.nextNonce(), orderUrl, kp.getPrivate());
         var req = JoseHttpRequest.newBuilder(orderUri)
-                .POST(BodyPublishers.ofString(Utils.JSONStringof(jws)))
+                .POST(BodyPublishers.ofString(ACMEJWS.toString(jws)))
                 .build();
         return client.sendAsync(req, BodyHandlers.ofString());
     }

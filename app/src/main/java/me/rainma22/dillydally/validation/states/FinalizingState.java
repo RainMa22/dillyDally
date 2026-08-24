@@ -20,7 +20,6 @@ import me.rainma22.dillydally.validation.JoseHttpRequest;
 import me.rainma22.dillydally.validation.NewOrderResponse;
 import me.rainma22.dillydally.validation.ResourceLocationResponse;
 import me.rainma22.dillydally.validation.ResponseConstants;
-import me.rainma22.dillydally.validation.Utils;
 import me.rainma22.dillydally.validation.ValidationHttpClient;
 
 /**
@@ -71,7 +70,7 @@ public class FinalizingState implements ValidatorState {
                     .toString());
 
             var req = JoseHttpRequest.newBuilder(finalizeUri)
-                    .POST(BodyPublishers.ofString(Utils.JSONStringof(jws)))
+                    .POST(BodyPublishers.ofString(ACMEJWS.toString(jws)))
                     .build();
             var res = client.sendAsync(req, BodyHandlers.ofString())
                     .thenApply(r -> new JSONObject(r.body()))

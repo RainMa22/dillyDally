@@ -13,7 +13,6 @@ import me.rainma22.dillydally.conf.ConfBean;
 import me.rainma22.dillydally.validation.ACMEJWS;
 import me.rainma22.dillydally.validation.JoseHttpRequest;
 import me.rainma22.dillydally.validation.ResourceLocationResponse;
-import me.rainma22.dillydally.validation.Utils;
 import me.rainma22.dillydally.validation.ValidationHttpClient;
 
 public class InitializedState implements ValidatorState {
@@ -39,7 +38,7 @@ public class InitializedState implements ValidatorState {
             var jws = ACMEJWS.withJWK(jwk, client.nextNonce(), resourceLocations.getNewAccount(), kp.getPrivate());
             jws.content(new JSONObject(
                     Map.of("termsOfServiceAgreed", true)).toString());
-            var reqBody = Utils.JSONStringof(jws);
+            var reqBody = ACMEJWS.toString(jws);
             var req = JoseHttpRequest.newBuilder(URI.create(resourceLocations.getNewAccount()))
                     .POST(HttpRequest.BodyPublishers.ofString(reqBody))
                     .build();

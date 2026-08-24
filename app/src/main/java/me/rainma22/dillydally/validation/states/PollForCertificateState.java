@@ -27,7 +27,6 @@ import me.rainma22.dillydally.validation.JoseHttpRequest;
 import me.rainma22.dillydally.validation.NewOrderResponse;
 import me.rainma22.dillydally.validation.ResourceLocationResponse;
 import me.rainma22.dillydally.validation.ResponseConstants;
-import me.rainma22.dillydally.validation.Utils;
 import me.rainma22.dillydally.validation.ValidationHttpClient;
 
 /**
@@ -91,7 +90,7 @@ public class PollForCertificateState implements ValidatorState {
                 // need to use POST-as-GET instead of just GET even if Let's encrypt allows it
                 var jws = ACMEJWS.withAccountLocation(accountLocation, client.nextNonce(), certUrl, kp.getPrivate());
                 var req = JoseHttpRequest.newBuilder(URI.create(orderResponse.getCertificate()))
-                        .POST(BodyPublishers.ofString(Utils.JSONStringof(jws)))
+                        .POST(BodyPublishers.ofString(ACMEJWS.toString(jws)))
                         .build();
                 List<X509Certificate> certs = new ArrayList<>();
                 try (PEMParser parser = new PEMParser(
@@ -117,7 +116,7 @@ public class PollForCertificateState implements ValidatorState {
         URI orderUri = URI.create(orderUrl);
         var jws = ACMEJWS.withAccountLocation(accountLocation, client.nextNonce(), orderUrl, kp.getPrivate());
         var req = JoseHttpRequest.newBuilder(orderUri)
-                .POST(BodyPublishers.ofString(Utils.JSONStringof(jws)))
+                .POST(BodyPublishers.ofString(ACMEJWS.toString(jws)))
                 .build();
         return client.sendAsync(req, BodyHandlers.ofString());
     }
