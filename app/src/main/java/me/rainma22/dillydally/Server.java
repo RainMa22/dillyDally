@@ -3,30 +3,15 @@
  */
 package me.rainma22.dillydally;
 
-import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
-import com.sun.net.httpserver.HttpsConfigurator;
 import com.sun.net.httpserver.HttpsServer;
-import com.sun.net.httpserver.SimpleFileServer;
-
 import me.rainma22.dillydally.conf.ConfBean;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.security.KeyManagementException;
-import java.security.SecureRandom;
-import java.util.concurrent.Executors;
-
-import javax.net.ssl.KeyManager;
-import javax.net.ssl.SSLContextSpi;
-import javax.net.ssl.SSLEngine;
-import javax.net.ssl.SSLServerSocketFactory;
-import javax.net.ssl.SSLSessionContext;
-import javax.net.ssl.SSLSocketFactory;
-import javax.net.ssl.TrustManager;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -36,8 +21,6 @@ public class Server {
     private static final Path configDirPath = Path.of("config");
     private static final Path configJson = configDirPath.resolve("config.json");
     private static ConfBean config = new ConfBean();
-    private static HttpServer server = null;
-    private static HttpsServer httpsServer = null;
 
     public static void main(String[] args) throws Exception {
         try {
@@ -54,16 +37,15 @@ public class Server {
             // ignored
         }
         try {
-            server = HttpServer.create(new InetSocketAddress(config.getHttpPort()), 0);
-            httpsServer = HttpsServer.create(new InetSocketAddress(config.getHttpsPort()), 0);
-
-            server.setExecutor(Executors.newVirtualThreadPerTaskExecutor());
-            server.createContext("/", (exch) -> {
+            DillyDally dd = new DillyDally(config);
+            HttpServer http = dd.createHttp();
+            HttpsServer https = dd.createHttps();
+            HttpHandler handler = (exch) -> {
                 try {
                     Path path = Path.of(".").toAbsolutePath()
                             .resolve(Path.of(".", exch.getRequestURI().getPath().replaceFirst("/", "")));
-                    System.out.print(exch.getRequestURI().getPath() + ": ");
-                    System.out.println(path.toAbsolutePath().toString());
+                    // System.out.print(exch.getRequestURI().getPath() + ": ");
+                    // System.out.println(path.toAbsolutePath().toString());
                     if (!path.toAbsolutePath().startsWith(Path.of(".").toAbsolutePath())) {
                         exch.sendResponseHeaders(400, 0);
                         return;
@@ -119,9 +101,13 @@ public class Server {
                 } finally {
                     exch.close();
                 }
-            });
-            server.start();
-            System.out.println("Server Started at http://" + "0.0.0.0:" + config.getHttpPort());
+            };
+            http.createContext("/", handler);
+            https.createContext("/", handler);
+            https.start();
+            http.start();
+            System.out.println("Http Server Started at http://" + "0.0.0.0:" + config.getHttpPort());
+            System.out.println("Https Server Started at https://" + "0.0.0.0:" + config.getHttpsPort());
         } catch (IOException ie) {
             ie.printStackTrace();
             return;
