@@ -10,6 +10,7 @@ public class SSLCertificateConfBean {
     private String pathToACMEPEM = "config/acme.pem";
     private String pathToSSLKeyPEM = "config/key.pem";
     private String pathToSSLCertPEM = "config/cert.pem";
+    private int renewalThresholdInDays = 5;
 
     private String acmePassword = random.nextAlphanumeric(22);
     private String sslKeyPassword = random.nextAlphanumeric(22);
@@ -80,6 +81,14 @@ public class SSLCertificateConfBean {
 
     public void setPathToSSLCertPEM(String pathToSSLCertPEM) {
         this.pathToSSLCertPEM = pathToSSLCertPEM;
+    }
+
+    public int getRenewalThresholdInDays() {
+        return renewalThresholdInDays;
+    }
+
+    public void setRenewalThresholdInDays(int renewalThresholdInDays) {
+        this.renewalThresholdInDays = renewalThresholdInDays;
     }
 
 }

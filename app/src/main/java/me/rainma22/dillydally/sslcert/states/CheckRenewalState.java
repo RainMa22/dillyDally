@@ -23,11 +23,11 @@ import me.rainma22.dillydally.conf.ConfBean;
 import me.rainma22.dillydally.sslcert.RenewalInfoResponse;
 import me.rainma22.dillydally.sslcert.ResourceLocationResponse;
 import me.rainma22.dillydally.sslcert.SuggestedWindowBean;
-import me.rainma22.dillydally.sslcert.ValidationHttpClient;
+import me.rainma22.dillydally.sslcert.ACMEHttpClient;
 
 public class CheckRenewalState implements CertificateGetterState {
 
-    private static final long THRESHOLD_MILLISEC = Duration.ofDays(5).toMillis();
+    private final long THRESHOLD_MILLISEC;
     private KeyPair kp;
     private String accountLocation;
     private KeyPair sslKeyPair;
@@ -41,6 +41,7 @@ public class CheckRenewalState implements CertificateGetterState {
         this.sslKeyPair = sslKeyPair;
         this.certChain = certChain;
         this.conf = conf;
+        THRESHOLD_MILLISEC = Duration.ofDays(conf.getSslCertificateConf().getRenewalThresholdInDays()).toMillis();
     }
 
     @Override
@@ -69,7 +70,7 @@ public class CheckRenewalState implements CertificateGetterState {
         try (var inStream = resourceLocationURI.toURL().openStream()) {
             resourceLocations = JSONObject.fromJson(new String(inStream.readAllBytes()),
                     ResourceLocationResponse.class);
-            ValidationHttpClient client = new ValidationHttpClient(resourceLocations);
+            ACMEHttpClient client = new ACMEHttpClient(resourceLocations);
             if (resourceLocations.isAIRSupported()) {
                 final Encoder base64url = Base64.getUrlEncoder().withoutPadding();
                 String akiBase64 = base64url.encodeToString(certChain[0].getExtensionValue("2.5.29.35"));
@@ -87,7 +88,7 @@ public class CheckRenewalState implements CertificateGetterState {
                 LocalDateTime notAfter = LocalDateTime
                         .from(DateTimeFormatter.ISO_DATE_TIME.parse(suggestedWindow.getNotAfter()));
                 if (notBefore.isBefore(LocalDateTime.now()) && notAfter.isAfter(LocalDateTime.now())) {
-                    // TODO: return a ARI-supporting renewal state
+                    // return a ARI-supporting renewal state
                     return new ARIAccountCreatedState(kp, resourceLocations, client, accountLocation, certId, conf);
                 } else if (notAfter.isBefore(LocalDateTime.now())) {
                     // renew the old-fashioned way

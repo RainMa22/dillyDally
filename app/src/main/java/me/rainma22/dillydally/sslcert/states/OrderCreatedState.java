@@ -8,13 +8,13 @@ import java.util.ArrayList;
 import me.rainma22.dillydally.conf.ConfBean;
 import me.rainma22.dillydally.sslcert.NewOrderResponse;
 import me.rainma22.dillydally.sslcert.ResourceLocationResponse;
-import me.rainma22.dillydally.sslcert.ValidationHttpClient;
+import me.rainma22.dillydally.sslcert.ACMEHttpClient;
 
 public class OrderCreatedState implements CertificateGetterState {
 
     private KeyPair kp;
     private ResourceLocationResponse resourceLocations;
-    private ValidationHttpClient client;
+    private ACMEHttpClient client;
     private String accountLocation;
     private String orderLocation;
     private LocalDateTime orderExpiry;
@@ -22,7 +22,7 @@ public class OrderCreatedState implements CertificateGetterState {
     private ConfBean conf;
 
     public OrderCreatedState(KeyPair kp, ResourceLocationResponse resourceLocations,
-            ValidationHttpClient client, String accountLocation, String orderLocation,
+            ACMEHttpClient client, String accountLocation, String orderLocation,
             LocalDateTime orderExpiry, NewOrderResponse orderResponse, ConfBean conf) {
         this.kp = kp;
         this.resourceLocations = resourceLocations;

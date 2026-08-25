@@ -13,12 +13,12 @@ import me.rainma22.dillydally.conf.ConfBean;
 import me.rainma22.dillydally.sslcert.ACMEJWS;
 import me.rainma22.dillydally.sslcert.JoseHttpRequest;
 import me.rainma22.dillydally.sslcert.ResourceLocationResponse;
-import me.rainma22.dillydally.sslcert.ValidationHttpClient;
+import me.rainma22.dillydally.sslcert.ACMEHttpClient;
 
 public class InitializedState implements CertificateGetterState {
     private KeyPair kp;
     private ResourceLocationResponse resourceLocations;
-    private ValidationHttpClient client;
+    private ACMEHttpClient client;
     private ConfBean conf;
 
     public InitializedState(KeyPair kp, ResourceLocationResponse resourceLocation, ConfBean conf) {
@@ -64,7 +64,7 @@ public class InitializedState implements CertificateGetterState {
 
     public void setResourceLocations(ResourceLocationResponse resourceLocation) {
         this.resourceLocations = resourceLocation;
-        client = new ValidationHttpClient(resourceLocation);
+        client = new ACMEHttpClient(resourceLocation);
     }
 
 }

@@ -19,7 +19,7 @@ import me.rainma22.dillydally.sslcert.JoseHttpRequest;
 import me.rainma22.dillydally.sslcert.NewOrderResponse;
 import me.rainma22.dillydally.sslcert.ResourceLocationResponse;
 import me.rainma22.dillydally.sslcert.ResponseConstants;
-import me.rainma22.dillydally.sslcert.ValidationHttpClient;
+import me.rainma22.dillydally.sslcert.ACMEHttpClient;
 
 /**
  * OrderValidationState
@@ -27,14 +27,14 @@ import me.rainma22.dillydally.sslcert.ValidationHttpClient;
 public class OrderValidationState implements CertificateGetterState {
     private KeyPair kp;
     private ResourceLocationResponse resourceLocations;
-    private ValidationHttpClient client;
+    private ACMEHttpClient client;
     private String accountLocation;
     private String orderLocation;
     private LocalDateTime orderExpiry;
     private NewOrderResponse orderResponse;
     private ConfBean conf;
 
-    public OrderValidationState(KeyPair kp, ResourceLocationResponse resourceLocations, ValidationHttpClient client,
+    public OrderValidationState(KeyPair kp, ResourceLocationResponse resourceLocations, ACMEHttpClient client,
             String accountLocation, String orderLocation, LocalDateTime orderExpiry, NewOrderResponse orderResponse,
             ConfBean conf) {
         this.kp = kp;

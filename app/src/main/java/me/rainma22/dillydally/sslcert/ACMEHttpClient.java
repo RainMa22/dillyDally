@@ -8,12 +8,12 @@ import java.net.http.HttpResponse;
 import java.net.http.HttpResponse.BodyHandler;
 import java.util.concurrent.CompletableFuture;
 
-public class ValidationHttpClient {
+public class ACMEHttpClient {
     private final HttpClient client = HttpClient.newHttpClient();
     private final ResourceLocationResponse resourceLocations;
     private String _nextNonce = null;
 
-    public ValidationHttpClient(ResourceLocationResponse resourceLocations) {
+    public ACMEHttpClient(ResourceLocationResponse resourceLocations) {
         this.resourceLocations = resourceLocations;
     }
 

@@ -27,7 +27,7 @@ import me.rainma22.dillydally.sslcert.JoseHttpRequest;
 import me.rainma22.dillydally.sslcert.NewOrderResponse;
 import me.rainma22.dillydally.sslcert.ResourceLocationResponse;
 import me.rainma22.dillydally.sslcert.ResponseConstants;
-import me.rainma22.dillydally.sslcert.ValidationHttpClient;
+import me.rainma22.dillydally.sslcert.ACMEHttpClient;
 
 /**
  * PollForCertificateState
@@ -35,14 +35,14 @@ import me.rainma22.dillydally.sslcert.ValidationHttpClient;
 public class PollForCertificateState implements CertificateGetterState {
     private KeyPair kp;
     private ResourceLocationResponse resourceLocations;
-    private ValidationHttpClient client;
+    private ACMEHttpClient client;
     private String accountLocation;
     private String orderLocation;
     private LocalDateTime orderExpiry;
     private KeyPair sslKeyPair;
     private ConfBean conf;
 
-    public PollForCertificateState(KeyPair kp, ResourceLocationResponse resourceLocations, ValidationHttpClient client,
+    public PollForCertificateState(KeyPair kp, ResourceLocationResponse resourceLocations, ACMEHttpClient client,
             String accountLocation, String orderLocation, LocalDateTime orderExpiry, KeyPair sslKeyPair,
             ConfBean conf) {
         this.kp = kp;

@@ -16,18 +16,18 @@ import me.rainma22.dillydally.sslcert.JoseHttpRequest;
 import me.rainma22.dillydally.sslcert.NewOrderResponse;
 import me.rainma22.dillydally.sslcert.OrderIdentifier;
 import me.rainma22.dillydally.sslcert.ResourceLocationResponse;
-import me.rainma22.dillydally.sslcert.ValidationHttpClient;
+import me.rainma22.dillydally.sslcert.ACMEHttpClient;
 
 public class ARIAccountCreatedState implements CertificateGetterState {
     private KeyPair kp;
     private ResourceLocationResponse resourceLocations;
-    private ValidationHttpClient client;
+    private ACMEHttpClient client;
     private String accountLocation;
     private String replaces;
     private ConfBean conf;
 
     public ARIAccountCreatedState(KeyPair kp, ResourceLocationResponse resourceLocations,
-            ValidationHttpClient client, String accountLocation, String replaces, ConfBean conf) {
+            ACMEHttpClient client, String accountLocation, String replaces, ConfBean conf) {
         this.kp = kp;
         this.resourceLocations = resourceLocations;
         this.client = client;
