@@ -9,6 +9,7 @@ public class ConfBean {
     private int httpPort = 80;
     private int httpsPort = 443;
     private String serverUrl = "https://acme-staging-v02.api.letsencrypt.org/directory";
+    private FileHandlerConfBean fileHandlerConf = new FileHandlerConfBean();
     public String getServerUrl() {
         return serverUrl;
     }
@@ -52,6 +53,14 @@ public class ConfBean {
 
     public void setSslCertificateConf(SSLCertificateConfBean sslCertificateConf) {
         this.sslCertificateConf = sslCertificateConf;
+    }
+
+    public FileHandlerConfBean getFileHandlerConf() {
+        return fileHandlerConf;
+    }
+
+    public void setFileHandlerConf(FileHandlerConfBean fileHandlerConf) {
+        this.fileHandlerConf = fileHandlerConf;
     }
 
 }

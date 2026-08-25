@@ -7,6 +7,7 @@ import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 import com.sun.net.httpserver.HttpsServer;
 import me.rainma22.dillydally.conf.ConfBean;
+import me.rainma22.dillydally.handler.FileHandler;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -40,68 +41,7 @@ public class Server {
             DillyDally dd = new DillyDally(config);
             HttpServer http = dd.createHttp();
             HttpsServer https = dd.createHttps();
-            HttpHandler handler = (exch) -> {
-                try {
-                    Path path = Path.of(".").toAbsolutePath()
-                            .resolve(Path.of(".", exch.getRequestURI().getPath().replaceFirst("/", "")));
-                    // System.out.print(exch.getRequestURI().getPath() + ": ");
-                    // System.out.println(path.toAbsolutePath().toString());
-                    if (!path.toAbsolutePath().startsWith(Path.of(".").toAbsolutePath())) {
-                        exch.sendResponseHeaders(400, 0);
-                        return;
-                    } else {
-                        if (!Files.exists(path)) {
-                            exch.getResponseHeaders().set("Content-Type", "text/html");
-                            byte[] res = "<h1>Not Found</h1>".getBytes();
-
-                            exch.sendResponseHeaders(404, res.length);
-                            exch.getResponseBody().write(res);
-                            return;
-                        }
-                        if (Files.isDirectory(path)) {
-                            exch.getResponseHeaders().set("Content-Type", "text/html");
-                            byte[] res = Files.list(path)
-                                    .sorted((p1, p2) -> {
-                                        if (Files.isDirectory(p1) && !Files.isDirectory(p2)) {
-                                            return -1;
-                                        } else if (!Files.isDirectory(p1) && Files.isDirectory(p2)) {
-                                            return 1;
-                                        } else {
-                                            return p1.compareTo(p2);
-                                        }
-                                    })
-                                    .map(p -> {
-                                        String pathString = path.toAbsolutePath().relativize(p.toAbsolutePath())
-                                                .toString();
-                                        boolean isFolder = Files.isDirectory(p);
-                                        return pathString.concat(isFolder ? "/" : "");
-                                    })
-                                    // .peek(System.out::println)
-                                    .map(s -> String.format("<li><a href=%s>%s</a></li>", s, s))
-                                    .reduce("<!DOCTYPE HTML>\n<html><body><ul>",
-                                            String::concat)
-                                    .concat("</ul></body></html>").getBytes(StandardCharsets.UTF_8);
-                            exch.sendResponseHeaders(200, res.length);
-                            exch.getResponseBody().write(res);
-                            return;
-                        } else {
-                            String contentType = Files.probeContentType(path);
-                            if (contentType != null) {
-                                exch.getResponseHeaders().set("Content-Type", contentType);
-                            }
-                            try (var in = path.toUri().toURL().openStream()) {
-                                exch.sendResponseHeaders(200, in.available());
-                                in.transferTo(exch.getResponseBody());
-                            }
-                            return;
-                        }
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                } finally {
-                    exch.close();
-                }
-            };
+            HttpHandler handler = new FileHandler(Path.of(config.getFileHandlerConf().getDirectoryPath()));
             http.createContext("/", handler);
             https.createContext("/", handler);
             https.start();
