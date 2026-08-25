@@ -3,15 +3,31 @@
  */
 package me.rainma22.dillydally;
 
+import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
+import com.sun.net.httpserver.HttpsConfigurator;
+import com.sun.net.httpserver.HttpsServer;
+import com.sun.net.httpserver.SimpleFileServer;
 
 import me.rainma22.dillydally.conf.ConfBean;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.KeyManagementException;
+import java.security.SecureRandom;
+import java.util.concurrent.Executors;
+
+import javax.net.ssl.KeyManager;
+import javax.net.ssl.SSLContextSpi;
+import javax.net.ssl.SSLEngine;
+import javax.net.ssl.SSLServerSocketFactory;
+import javax.net.ssl.SSLSessionContext;
+import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.TrustManager;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -21,28 +37,97 @@ public class Server {
     private static final Path configJson = configDirPath.resolve("config.json");
     private static ConfBean config = new ConfBean();
     private static HttpServer server = null;
+    private static HttpsServer httpsServer = null;
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
         try {
-            Files.createDirectory(configDirPath);
+            Files.createDirectories(configDirPath);
         } catch (IOException ie) {
-            ie.printStackTrace();
+            // ignored
         }
 
         try {
-            config = new JSONObject(configJson.toFile()).fromJson(ConfBean.class);
-        } catch (JSONException je) {
-            //ignored
+            config = new JSONObject(Files.readString(configJson)).fromJson(ConfBean.class);
+            Files.writeString(configJson, new JSONObject(config).toString(4));
+        } catch (JSONException | IOException e) {
+            throw e;
+            // ignored
         }
-        try (var channel = Files.newByteChannel(configJson)) {
-            channel.write(ByteBuffer.wrap(new JSONObject(config)
-                    .toString()
-                    .getBytes()));
+        try {
             server = HttpServer.create(new InetSocketAddress(config.getHttpPort()), 0);
+            httpsServer = HttpsServer.create(new InetSocketAddress(config.getHttpsPort()), 0);
+
+            server.setExecutor(Executors.newVirtualThreadPerTaskExecutor());
+            server.createContext("/", (exch) -> {
+                try {
+                    Path path = Path.of(".").toAbsolutePath()
+                            .resolve(Path.of(".", exch.getRequestURI().getPath().replaceFirst("/", "")));
+                    System.out.print(exch.getRequestURI().getPath() + ": ");
+                    System.out.println(path.toAbsolutePath().toString());
+                    if (!path.toAbsolutePath().startsWith(Path.of(".").toAbsolutePath())) {
+                        exch.sendResponseHeaders(400, 0);
+                        return;
+                    } else {
+                        if (!Files.exists(path)) {
+                            exch.getResponseHeaders().set("Content-Type", "text/html");
+                            byte[] res = "<h1>Not Found</h1>".getBytes();
+
+                            exch.sendResponseHeaders(404, res.length);
+                            exch.getResponseBody().write(res);
+                            return;
+                        }
+                        if (Files.isDirectory(path)) {
+                            exch.getResponseHeaders().set("Content-Type", "text/html");
+                            byte[] res = Files.list(path)
+                                    .sorted((p1, p2) -> {
+                                        if (Files.isDirectory(p1) && !Files.isDirectory(p2)) {
+                                            return -1;
+                                        } else if (!Files.isDirectory(p1) && Files.isDirectory(p2)) {
+                                            return 1;
+                                        } else {
+                                            return p1.compareTo(p2);
+                                        }
+                                    })
+                                    .map(p -> {
+                                        String pathString = path.toAbsolutePath().relativize(p.toAbsolutePath())
+                                                .toString();
+                                        boolean isFolder = Files.isDirectory(p);
+                                        return pathString.concat(isFolder ? "/" : "");
+                                    })
+                                    // .peek(System.out::println)
+                                    .map(s -> String.format("<li><a href=%s>%s</a></li>", s, s))
+                                    .reduce("<!DOCTYPE HTML>\n<html><body><ul>",
+                                            String::concat)
+                                    .concat("</ul></body></html>").getBytes(StandardCharsets.UTF_8);
+                            exch.sendResponseHeaders(200, res.length);
+                            exch.getResponseBody().write(res);
+                            return;
+                        } else {
+                            String contentType = Files.probeContentType(path);
+                            if (contentType != null) {
+                                exch.getResponseHeaders().set("Content-Type", contentType);
+                            }
+                            try (var in = path.toUri().toURL().openStream()) {
+                                exch.sendResponseHeaders(200, in.available());
+                                in.transferTo(exch.getResponseBody());
+                            }
+                            return;
+                        }
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                } finally {
+                    exch.close();
+                }
+            });
+            server.start();
+            System.out.println("Server Started at http://" + "0.0.0.0:" + config.getHttpPort());
         } catch (IOException ie) {
             ie.printStackTrace();
             return;
+        } finally {
+            // server.stop(0);
         }
-        
+
     }
 }
