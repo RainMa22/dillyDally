@@ -13,6 +13,7 @@ import java.security.KeyPair;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import org.bouncycastle.openssl.PEMEncryptor;
 import org.bouncycastle.openssl.jcajce.JcaPEMWriter;
@@ -47,12 +48,23 @@ public class CertificateGetter {
                 currState = new InitializedState(kp, resourceLocations, conf);
         }
 
-        private void nextState() {
-                this.currState = currState.nextState();
+        public CompletableFuture<CompletedState> getCert() {
+                return CompletableFuture.supplyAsync(() -> {
+                        while (!currState.isFinal()) {
+                                nextState();
+                                // System.out.println(currState.getClass().getName());
+                        }
+                        if (currState instanceof CompletedState) {
+                                return (CompletedState) currState;
+                        } else {
+                                FailedState fs = (FailedState) currState;
+                                throw new RuntimeException(fs.getError());
+                        }
+                });
         }
 
-        public CertificateGetterState getCurrState() {
-                return currState;
+        private void nextState() {
+                this.currState = currState.nextState();
         }
 
         public KeyPair getKeyPair() {
@@ -82,11 +94,7 @@ public class CertificateGetter {
                 Files.writeString(configJson, new JSONObject(config).toString(4), StandardCharsets.UTF_8);
 
                 CertificateGetter certGetter = new CertificateGetter(config, GenUtils.generateKeyPair());
-
-                while (!certGetter.getCurrState().isFinal()) {
-                        certGetter.nextState();
-                        System.out.println(certGetter.currState.getClass().getName());
-                }
+                certGetter.getCert().join();
 
                 KeyPair acmeKeyPair = certGetter.getKeyPair();
                 Path pemPath = Path.of(sslConf.getPathToACMEPEM());
