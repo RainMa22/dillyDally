@@ -31,7 +31,8 @@ public class CompletedState implements CertificateGetterState {
 
     @Override
     public CertificateGetterState nextState() {
-        return this; // ambiguous
+        //try for renewal
+        return new CheckRenewalState(kp, accountLocation, sslKeyPair, certChain, conf); 
     }
 
     public String getAccountLocation() {
