@@ -1,6 +1,5 @@
 package me.rainma22.dillydally.sslcert;
 
-import org.json.JSONObject;
 
 public class RenewalInfoResponse {
     private SuggestedWindowBean suggestedWindow;
