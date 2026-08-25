@@ -2,26 +2,30 @@ package me.rainma22.dillydally.sslcert;
 
 import java.util.List;
 
+import org.json.JSONPropertyIgnore;
+
 /**
  *
  */
 public class ResourceLocationResponse {
-//    {
-//     "newNonce": "https://example.com/acme/new-nonce",
-//     "newAccount": "https://example.com/acme/new-account",
-//     "newOrder": "https://example.com/acme/new-order",
-//     "newAuthz": "https://example.com/acme/new-authz",
-//     "revokeCert": "https://example.com/acme/revoke-cert",
-//     "keyChange": "https://example.com/acme/key-change",
-//     "meta": {
-//       "termsOfService": "https://example.com/acme/terms/2017-5-30",
-//       "website": "https://www.example.com/",
-//       "caaIdentities": ["example.com"],
-//       "externalAccountRequired": false
-//     }
-//   }
+    // {
+    // "newNonce": "https://example.com/acme/new-nonce",
+    // "newAccount": "https://example.com/acme/new-account",
+    // "newOrder": "https://example.com/acme/new-order",
+    // "newAuthz": "https://example.com/acme/new-authz",
+    // "revokeCert": "https://example.com/acme/revoke-cert",
+    // "keyChange": "https://example.com/acme/key-change",
+    // "meta": {
+    // "termsOfService": "https://example.com/acme/terms/2017-5-30",
+    // "website": "https://www.example.com/",
+    // "caaIdentities": ["example.com"],
+    // "externalAccountRequired": false
+    // }
+    // }
 
     private String newNonce, newAccount, newOrder, newAuthz, revokeCert, keyChange;
+    private String renewalInfo = null;
+
     private Meta meta;
 
     public String getNewNonce() {
@@ -78,6 +82,19 @@ public class ResourceLocationResponse {
 
     public void setMeta(Meta meta) {
         this.meta = meta;
+    }
+
+    public String getRenewalInfo() {
+        return renewalInfo;
+    }
+
+    public void setRenewalInfo(String renewalInfo) {
+        this.renewalInfo = renewalInfo;
+    }
+
+    @JSONPropertyIgnore
+    public boolean isAIRSupported() {
+        return getRenewalInfo() != null;
     }
 
     public static class Meta {
