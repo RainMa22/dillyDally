@@ -15,8 +15,8 @@ import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
-
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
@@ -37,12 +37,16 @@ import com.sun.net.httpserver.HttpsParameters;
 import com.sun.net.httpserver.HttpsServer;
 
 import me.rainma22.dillydally.conf.ConfBean;
+import me.rainma22.dillydally.sslcert.CertificateGetter;
+import me.rainma22.dillydally.sslcert.SSLSaver;
 
 public class DillyDally {
     private ConfBean conf;
-    public DillyDally(ConfBean conf){
+
+    public DillyDally(ConfBean conf) {
         this.conf = conf;
     }
+
     private KeyPair loadKeyPairFromFile() throws FileNotFoundException, IOException {
         var sslConf = conf.getSslCertificateConf();
         KeyPair kp;
@@ -76,10 +80,25 @@ public class DillyDally {
             throws NoSuchAlgorithmException, CertificateException, IOException, KeyStoreException {
         KeyStore ks = KeyStore.getInstance(KeyStore.getDefaultType());
         ks.load(null, new char[0]);
-        KeyPair kp = loadKeyPairFromFile();
-        X509Certificate[] certs = loadCertificatesFromFile();
-        ks.setKeyEntry("entry", kp.getPrivate(), new char[0], certs);
-        return ks;
+        int retries = 3;
+        IOException exception = new IOException();
+        while (retries-- > 0) {
+            try {
+                KeyPair kp = loadKeyPairFromFile();
+                X509Certificate[] certs = loadCertificatesFromFile();
+                ks.setKeyEntry("entry", kp.getPrivate(), new char[0], certs);
+                return ks;
+            } catch (IOException e) {
+                // System.out.printf("Encoutered an %s when loading SSL Key and certificate, trying to get a new key...\n", e);
+                try {
+                    var state = new CertificateGetter(conf).getCert().get();
+                    new SSLSaver(conf).SaveToFile(state.getSslKeyPair(), state.getCertChain());
+                } catch (ExecutionException | InterruptedException | IOException ex) {
+                    exception = new IOException(ex);
+                }
+            }
+        }
+        throw exception;
     }
 
     public HttpServer createHttp() throws IOException {

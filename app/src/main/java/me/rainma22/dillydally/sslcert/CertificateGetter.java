@@ -35,8 +35,13 @@ public class CertificateGetter {
         private CertificateGetterState currState;
         private KeyPair kp;
 
-        public CertificateGetter(ConfBean conf, KeyPair kp) throws IOException, InterruptedException {
+        public CertificateGetter(ConfBean conf) throws IOException, InterruptedException {
                 HttpClient client = HttpClient.newHttpClient();
+                try {
+                        kp = GenUtils.generateKeyPair();
+                } catch (NoSuchAlgorithmException e){
+                        throw new IOException(e);
+                }
                 var resourceLocations = new JSONObject(
                                 client.send(HttpRequest.newBuilder(URI.create(conf.getServerUrl()))
                                                 .GET()
@@ -44,7 +49,6 @@ public class CertificateGetter {
                                                 HttpResponse.BodyHandlers.ofString())
                                                 .body())
                                 .fromJson(ResourceLocationResponse.class);
-                this.kp = kp;
                 currState = new InitializedState(kp, resourceLocations, conf);
         }
 
@@ -71,6 +75,7 @@ public class CertificateGetter {
                 return kp;
         }
 
+
         public static void main(String[] args) throws IOException, InterruptedException, NoSuchAlgorithmException,
                         ExecutionException, OperatorCreationException, CertificateException,
                         KeyStoreException {
@@ -93,7 +98,7 @@ public class CertificateGetter {
                 var sslConf = config.getSslCertificateConf();
                 Files.writeString(configJson, new JSONObject(config).toString(4), StandardCharsets.UTF_8);
 
-                CertificateGetter certGetter = new CertificateGetter(config, GenUtils.generateKeyPair());
+                CertificateGetter certGetter = new CertificateGetter(config);
                 certGetter.getCert().join();
 
                 KeyPair acmeKeyPair = certGetter.getKeyPair();
@@ -111,20 +116,7 @@ public class CertificateGetter {
                         CompletedState state = (CompletedState) certGetter.currState;
                         KeyPair sslKeyPair = state.getSslKeyPair();
                         var certs = state.getCertChain();
-                        Path sslKeyPath = Path.of(sslConf.getPathToSSLKeyPEM());
-                        Files.createDirectories(sslKeyPath.getParent());
-                        try (var sslKeyOut = new JcaPEMWriter(new FileWriter(sslKeyPath.toFile()))) {
-                                PEMEncryptor encryptor = new JcePEMEncryptorBuilder("AES-256-CBC")
-                                                .build(sslConf.getSslKeyPassword().toCharArray());
-                                sslKeyOut.writeObject(sslKeyPair.getPrivate(), encryptor);
-                        }
-                        Path sslCertPath = Path.of(sslConf.getPathToSSLCertPEM());
-                        Files.createDirectories(sslCertPath.getParent());
-                        try (var sslCertOut = new JcaPEMWriter(new FileWriter(sslCertPath.toFile()))) {
-                                for (var cert : certs) {
-                                        sslCertOut.writeObject(cert);
-                                }
-                        }
+                        new SSLSaver(config).SaveToFile(sslKeyPair, certs);
                 } else {
                         throw new IOException(((FailedState) certGetter.currState).getError());
                 }

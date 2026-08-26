@@ -10,7 +10,6 @@ import me.rainma22.dillydally.conf.ConfBean;
 import me.rainma22.dillydally.handler.FileHandler;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -44,9 +43,9 @@ public class Server {
             HttpHandler handler = new FileHandler(Path.of(config.getFileHandlerConf().getDirectoryPath()));
             http.createContext("/", handler);
             https.createContext("/", handler);
-            https.start();
             http.start();
             System.out.println("Http Server Started at http://" + "0.0.0.0:" + config.getHttpPort());
+            https.start();
             System.out.println("Https Server Started at https://" + "0.0.0.0:" + config.getHttpsPort());
         } catch (IOException ie) {
             ie.printStackTrace();
