@@ -13,6 +13,7 @@ import java.security.KeyPair;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import org.bouncycastle.openssl.PEMEncryptor;
@@ -26,6 +27,7 @@ import me.rainma22.dillydally.conf.ConfBean;
 import me.rainma22.dillydally.sslcert.states.CompletedState;
 import me.rainma22.dillydally.sslcert.states.FailedState;
 import me.rainma22.dillydally.sslcert.states.InitializedState;
+import me.rainma22.dillydally.sslcert.io.SSLSaver;
 import me.rainma22.dillydally.sslcert.states.CertificateGetterState;
 
 /**
@@ -35,13 +37,13 @@ public class CertificateGetter {
         private CertificateGetterState currState;
         private KeyPair kp;
 
-        public CertificateGetter(ConfBean conf) throws IOException, InterruptedException {
+        public CertificateGetter(ConfBean conf) throws IOException, InterruptedException, NoSuchAlgorithmException {
+                this(conf, GenUtils.generateKeyPair());
+        }
+
+        public CertificateGetter(ConfBean conf, KeyPair kp) throws IOException, InterruptedException {
                 HttpClient client = HttpClient.newHttpClient();
-                try {
-                        kp = GenUtils.generateKeyPair();
-                } catch (NoSuchAlgorithmException e){
-                        throw new IOException(e);
-                }
+                this.kp = kp;
                 var resourceLocations = new JSONObject(
                                 client.send(HttpRequest.newBuilder(URI.create(conf.getServerUrl()))
                                                 .GET()
@@ -74,7 +76,6 @@ public class CertificateGetter {
         public KeyPair getKeyPair() {
                 return kp;
         }
-
 
         public static void main(String[] args) throws IOException, InterruptedException, NoSuchAlgorithmException,
                         ExecutionException, OperatorCreationException, CertificateException,

@@ -3,6 +3,8 @@ package me.rainma22.dillydally.sslcert.states;
 import java.security.KeyPair;
 import java.security.cert.X509Certificate;
 
+import org.json.JSONPropertyIgnore;
+
 import me.rainma22.dillydally.conf.ConfBean;
 
 /**
@@ -43,6 +45,7 @@ public class CompletedState implements CertificateGetterState {
         this.accountLocation = accountLocation;
     }
 
+    @JSONPropertyIgnore
     public KeyPair getSslKeyPair() {
         return sslKeyPair;
     }
@@ -51,6 +54,7 @@ public class CompletedState implements CertificateGetterState {
         this.sslKeyPair = sslKeyPair;
     }
 
+    @JSONPropertyIgnore
     public X509Certificate[] getCertChain() {
         return certChain;
     }
@@ -59,6 +63,7 @@ public class CompletedState implements CertificateGetterState {
         this.certChain = certChain;
     }
 
+    @JSONPropertyIgnore
     public ConfBean getConf() {
         return conf;
     }

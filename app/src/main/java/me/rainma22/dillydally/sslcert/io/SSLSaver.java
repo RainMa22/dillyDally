@@ -1,4 +1,4 @@
-package me.rainma22.dillydally.sslcert;
+package me.rainma22.dillydally.sslcert.io;
 
 import java.io.FileWriter;
 import java.io.IOException;
@@ -14,10 +14,12 @@ import org.bouncycastle.openssl.jcajce.JcePEMEncryptorBuilder;
 import me.rainma22.dillydally.conf.ConfBean;
 
 public class SSLSaver {
+
     private ConfBean conf;
 
     public SSLSaver(ConfBean conf) {
         this.conf = conf;
+
     }
 
     public void SaveToFile(KeyPair sslKeyPair, X509Certificate[] certs) throws IOException {
@@ -29,6 +31,7 @@ public class SSLSaver {
                     .build(sslConf.getSslKeyPassword().toCharArray());
             sslKeyOut.writeObject(sslKeyPair.getPrivate(), encryptor);
         }
+
         Path sslCertPath = Path.of(sslConf.getPathToSSLCertPEM());
         Files.createDirectories(sslCertPath.getParent());
         try (var sslCertOut = new JcaPEMWriter(new FileWriter(sslCertPath.toFile()))) {
@@ -37,5 +40,4 @@ public class SSLSaver {
             }
         }
     }
-
 }

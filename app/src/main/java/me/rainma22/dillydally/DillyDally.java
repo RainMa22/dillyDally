@@ -1,7 +1,5 @@
 package me.rainma22.dillydally;
 
-import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.security.KeyManagementException;
@@ -10,11 +8,8 @@ import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.UnrecoverableKeyException;
-import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import javax.net.ssl.KeyManagerFactory;
@@ -23,57 +18,26 @@ import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLParameters;
 import javax.net.ssl.TrustManagerFactory;
 
-import org.bouncycastle.cert.X509CertificateHolder;
-import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
-import org.bouncycastle.jce.provider.BouncyCastleProvider;
-import org.bouncycastle.openssl.PEMEncryptedKeyPair;
-import org.bouncycastle.openssl.PEMParser;
-import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
-import org.bouncycastle.openssl.jcajce.JcePEMDecryptorProviderBuilder;
-
 import com.sun.net.httpserver.HttpServer;
 import com.sun.net.httpserver.HttpsConfigurator;
 import com.sun.net.httpserver.HttpsParameters;
 import com.sun.net.httpserver.HttpsServer;
 
 import me.rainma22.dillydally.conf.ConfBean;
-import me.rainma22.dillydally.sslcert.CertificateGetter;
-import me.rainma22.dillydally.sslcert.SSLSaver;
+import me.rainma22.dillydally.sslcert.io.CertificateGetterLoader;
+import me.rainma22.dillydally.sslcert.io.CertificateGetterSaver;
+import me.rainma22.dillydally.sslcert.io.SSLLoader;
+import me.rainma22.dillydally.sslcert.io.SSLSaver;
 
 public class DillyDally {
     private ConfBean conf;
+    private SSLLoader sslLoader;
+    private CertificateGetterLoader certGetterLoader;
 
     public DillyDally(ConfBean conf) {
         this.conf = conf;
-    }
-
-    private KeyPair loadKeyPairFromFile() throws FileNotFoundException, IOException {
-        var sslConf = conf.getSslCertificateConf();
-        KeyPair kp;
-        try (PEMParser parser = new PEMParser(new FileReader(sslConf.getPathToSSLKeyPEM()))) {
-            JcaPEMKeyConverter converter = new JcaPEMKeyConverter();
-            var decryptorProvider = new JcePEMDecryptorProviderBuilder()
-                    .setProvider(new BouncyCastleProvider())
-                    .build(sslConf.getSslKeyPassword().toCharArray());
-            PEMEncryptedKeyPair pekp = (PEMEncryptedKeyPair) parser.readObject();
-            var pkp = pekp.decryptKeyPair(decryptorProvider);
-            kp = converter.getKeyPair(pkp);
-        }
-        return kp;
-    }
-
-    private X509Certificate[] loadCertificatesFromFile()
-            throws CertificateException, FileNotFoundException, IOException {
-        var sslConf = conf.getSslCertificateConf();
-        try (PEMParser parser = new PEMParser(new FileReader(sslConf.getPathToSSLCertPEM()))) {
-            JcaX509CertificateConverter converter = new JcaX509CertificateConverter();
-            Object obj;
-            List<Certificate> certList = new ArrayList<>();
-            while ((obj = parser.readObject()) != null) {
-                certList.add(converter.getCertificate((X509CertificateHolder) obj));
-            }
-            return certList.stream().toArray(X509Certificate[]::new);
-        }
+        sslLoader = new SSLLoader(conf);
+        certGetterLoader = new CertificateGetterLoader(conf);
     }
 
     private KeyStore initializeKeyStore()
@@ -84,15 +48,18 @@ public class DillyDally {
         IOException exception = new IOException();
         while (retries-- > 0) {
             try {
-                KeyPair kp = loadKeyPairFromFile();
-                X509Certificate[] certs = loadCertificatesFromFile();
+                KeyPair kp = sslLoader.loadSSLKeyPair();
+                X509Certificate[] certs = sslLoader.loadSSLCertificates();
                 ks.setKeyEntry("entry", kp.getPrivate(), new char[0], certs);
                 return ks;
             } catch (IOException e) {
-                // System.out.printf("Encoutered an %s when loading SSL Key and certificate, trying to get a new key...\n", e);
+                // System.out.printf("Encoutered an %s when loading SSL Key and certificate,
+                // trying to get a new key...\n", e);
                 try {
-                    var state = new CertificateGetter(conf).getCert().get();
+                    var certGetter = certGetterLoader.loadCertGetter();
+                    var state = certGetter.getCert().get();
                     new SSLSaver(conf).SaveToFile(state.getSslKeyPair(), state.getCertChain());
+                    new CertificateGetterSaver(conf).SaveToFile(certGetter.getKeyPair());
                 } catch (ExecutionException | InterruptedException | IOException ex) {
                     exception = new IOException(ex);
                 }
