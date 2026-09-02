@@ -56,4 +56,9 @@ public class OrderCreatedState implements CertificateGetterState {
         }
     }
 
+    @Override
+    public String getAccountLocation() {
+        return accountLocation;
+    }
+
 }

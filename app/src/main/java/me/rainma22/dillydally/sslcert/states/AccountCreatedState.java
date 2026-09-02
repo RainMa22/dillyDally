@@ -7,6 +7,7 @@ import java.security.KeyPair;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
+import java.util.Optional;
 
 import org.json.JSONObject;
 
@@ -41,6 +42,8 @@ public class AccountCreatedState implements CertificateGetterState {
 
     @Override
     public CertificateGetterState nextState() {
+        if(accountLocation == null)
+            return new InitializedState(kp, resourceLocations, conf);
         try {
             // create order
             var jws = ACMEJWS.withAccountLocation(accountLocation, client.nextNonce(), resourceLocations.getNewOrder(),
@@ -66,14 +69,18 @@ public class AccountCreatedState implements CertificateGetterState {
                     .thenApply(res -> {
                         var orderLocation = res.headers().firstValue("Location").get();
                         var newOrderResponse = JSONObject.fromJson(res.body(), NewOrderResponse.class);
-                        return new OrderCreatedState(kp, resourceLocations, client, accountLocation, orderLocation, 
-                            LocalDateTime.from(DateTimeFormatter.
-                                ISO_DATE_TIME.parse(newOrderResponse.getExpires())), 
+                        return new OrderCreatedState(kp, resourceLocations, client, accountLocation, orderLocation,
+                                LocalDateTime
+                                        .from(DateTimeFormatter.ISO_DATE_TIME.parse(newOrderResponse.getExpires())),
                                 newOrderResponse, conf);
                     }).get();
         } catch (Exception e) {
             return new FailedState(e);
         }
+    }
+
+    public String getAccountLocation() {
+        return accountLocation;
     }
 
 }

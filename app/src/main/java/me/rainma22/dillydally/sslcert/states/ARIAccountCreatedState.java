@@ -7,6 +7,7 @@ import java.security.KeyPair;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
+import java.util.Optional;
 
 import org.json.JSONObject;
 
@@ -57,8 +58,7 @@ public class ARIAccountCreatedState implements CertificateGetterState {
                     }).toList();
             var payload = new JSONObject(
                     Map.of("identifiers", identifiers,
-                        "replaces", replaces
-                    ));
+                            "replaces", replaces));
             jws.content(payload.toString());
             var reqBody = ACMEJWS.toString(jws);
             var req = JoseHttpRequest.newBuilder(URI.create(resourceLocations.getNewOrder()))
@@ -70,9 +70,9 @@ public class ARIAccountCreatedState implements CertificateGetterState {
                     .thenApply(res -> {
                         var orderLocation = res.headers().firstValue("Location").get();
                         var newOrderResponse = JSONObject.fromJson(res.body(), NewOrderResponse.class);
-                        return new OrderCreatedState(kp, resourceLocations, client, accountLocation, orderLocation, 
-                            LocalDateTime.from(DateTimeFormatter.
-                                ISO_DATE_TIME.parse(newOrderResponse.getExpires())), 
+                        return new OrderCreatedState(kp, resourceLocations, client, accountLocation, orderLocation,
+                                LocalDateTime
+                                        .from(DateTimeFormatter.ISO_DATE_TIME.parse(newOrderResponse.getExpires())),
                                 newOrderResponse, conf);
                     }).get();
         } catch (Exception e) {
@@ -80,6 +80,11 @@ public class ARIAccountCreatedState implements CertificateGetterState {
             // TODO: log the exception
             return new AccountCreatedState(kp, resourceLocations, client, accountLocation, conf);
         }
+    }
+
+    @Override
+    public String getAccountLocation() {
+        return accountLocation;
     }
 
 }

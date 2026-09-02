@@ -13,7 +13,7 @@ import java.security.KeyPair;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
-import java.util.Map;
+import java.security.cert.X509Certificate;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import org.bouncycastle.openssl.PEMEncryptor;
@@ -36,30 +36,30 @@ import me.rainma22.dillydally.sslcert.states.CertificateGetterState;
 public class CertificateGetter {
         private CertificateGetterState currState;
         private KeyPair kp;
+        private ConfBean conf;
 
         public CertificateGetter(ConfBean conf) throws IOException, InterruptedException, NoSuchAlgorithmException {
                 this(conf, GenUtils.generateKeyPair());
         }
 
         public CertificateGetter(ConfBean conf, KeyPair kp) throws IOException, InterruptedException {
-                HttpClient client = HttpClient.newHttpClient();
                 this.kp = kp;
-                var resourceLocations = new JSONObject(
-                                client.send(HttpRequest.newBuilder(URI.create(conf.getServerUrl()))
-                                                .GET()
-                                                .build(),
-                                                HttpResponse.BodyHandlers.ofString())
-                                                .body())
-                                .fromJson(ResourceLocationResponse.class);
-                currState = new InitializedState(kp, resourceLocations, conf);
+                this.conf = conf;
+                try (var in = URI.create(conf.getServerUrl()).toURL().openStream()) {
+                        var resourceLocations = JSONObject.fromJson(
+                                        new String(in.readAllBytes()),
+                                        ResourceLocationResponse.class);
+                        currState = new InitializedState(kp, resourceLocations, conf);
+                }
         }
 
         public CompletableFuture<CompletedState> getCert() {
                 return CompletableFuture.supplyAsync(() -> {
-                        while (!currState.isFinal()) {
+                        do {
+                                // check for updates if already completed
                                 nextState();
                                 // System.out.println(currState.getClass().getName());
-                        }
+                        } while (!currState.isFinal());
                         if (currState instanceof CompletedState) {
                                 return (CompletedState) currState;
                         } else {
@@ -67,6 +67,10 @@ public class CertificateGetter {
                                 throw new RuntimeException(fs.getError());
                         }
                 });
+        }
+
+        public void setCert(KeyPair sslKeyPair, X509Certificate[] certs) {
+                currState = new CompletedState(sslKeyPair, null, sslKeyPair, certs, conf);
         }
 
         private void nextState() {

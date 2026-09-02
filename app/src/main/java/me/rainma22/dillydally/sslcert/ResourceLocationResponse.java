@@ -93,7 +93,8 @@ public class ResourceLocationResponse {
     }
 
     @JSONPropertyIgnore
-    public boolean isAIRSupported() {
+    public boolean isARISupported() {
+        System.out.println(renewalInfo);
         return getRenewalInfo() != null;
     }
 

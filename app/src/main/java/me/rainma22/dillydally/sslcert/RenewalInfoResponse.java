@@ -2,7 +2,7 @@ package me.rainma22.dillydally.sslcert;
 
 
 public class RenewalInfoResponse {
-    private SuggestedWindowBean suggestedWindow;
+    private SuggestedWindowBean suggestedWindow = new SuggestedWindowBean();
     private String explainationURL = null;
 
     public SuggestedWindowBean getSuggestedWindow() {

@@ -159,4 +159,10 @@ public class CompletingAuthorizationState implements CertificateGetterState {
         }
     }
 
+    @Override
+    public String getAccountLocation() 
+    {
+        return accountLocation;
+    }
+
 }

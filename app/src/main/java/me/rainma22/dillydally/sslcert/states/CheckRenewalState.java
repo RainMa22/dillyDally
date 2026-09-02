@@ -1,7 +1,9 @@
 package me.rainma22.dillydally.sslcert.states;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.URI;
+import java.net.URL;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpResponse.BodyHandlers;
@@ -11,10 +13,13 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Date;
+import java.util.Optional;
 import java.util.Base64.Encoder;
 
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import me.rainma22.dillydally.conf.ConfBean;
@@ -69,17 +74,23 @@ public class CheckRenewalState implements CertificateGetterState {
             resourceLocations = JSONObject.fromJson(new String(inStream.readAllBytes()),
                     ResourceLocationResponse.class);
             ACMEHttpClient client = new ACMEHttpClient(resourceLocations);
-            if (resourceLocations.isAIRSupported()) {
+            if (resourceLocations.isARISupported()) {
                 final Encoder base64url = Base64.getUrlEncoder().withoutPadding();
+                byte[] serial = certChain[0].getSerialNumber().toByteArray();
                 String akiBase64 = base64url.encodeToString(certChain[0].getExtensionValue("2.5.29.35"));
-                String serialBase64 = base64url.encodeToString(certChain[0].getSerialNumber().toByteArray());
+                String serialBase64 = base64url.encodeToString(serial);
                 String certId = akiBase64 + "." + serialBase64;
                 HttpRequest req = HttpRequest
-                        .newBuilder(URI.create(resourceLocations.getRenewalInfo()).resolve(certId))
+                        .newBuilder(URI.create(resourceLocations.getRenewalInfo() + "/").resolve("/" + certId))
                         .GET()
                         .build();
                 HttpResponse<String> res = client.send(req, BodyHandlers.ofString());
-                RenewalInfoResponse renewalInfo = JSONObject.fromJson(res.body(), RenewalInfoResponse.class);
+                RenewalInfoResponse renewalInfo = new RenewalInfoResponse();
+                try {
+                    renewalInfo = JSONObject.fromJson(res.body(), RenewalInfoResponse.class);
+                } catch (JSONException je) {
+                    // fallback, test the old-fashioned way.
+                }
                 SuggestedWindowBean suggestedWindow = renewalInfo.getSuggestedWindow();
                 LocalDateTime notBefore = LocalDateTime
                         .from(DateTimeFormatter.ISO_DATE_TIME.parse(suggestedWindow.getNotBefore()));
@@ -111,4 +122,8 @@ public class CheckRenewalState implements CertificateGetterState {
 
     }
 
+    @Override
+    public String getAccountLocation() {
+        return accountLocation;
+    }
 }

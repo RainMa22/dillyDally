@@ -76,7 +76,7 @@ public class FinalizingState implements CertificateGetterState {
                     .thenApply(r -> new JSONObject(r.body()))
                     .get();
             String status = res.get("status").toString();
-            if (ResponseConstants.PROCESSING.equals(status)) {
+            if (ResponseConstants.PROCESSING.equals(status) || ResponseConstants.VALID.equals(status)) {
                 return new PollForCertificateState(kp, resourceLocations,
                         client, accountLocation, orderLocation, orderExpiry, sslKeyPair, conf);
             } else {
@@ -86,6 +86,11 @@ public class FinalizingState implements CertificateGetterState {
             return new FailedState(e);
         }
 
+    }
+
+    @Override
+    public String getAccountLocation() {
+        return accountLocation;
     }
 
 }

@@ -105,4 +105,10 @@ public class OrderValidationState implements CertificateGetterState {
         }
     }
 
+    @Override
+    public String getAccountLocation() {
+        return accountLocation;
+    }
+    
+
 }

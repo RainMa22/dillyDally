@@ -62,7 +62,7 @@ public class PollForCertificateState implements CertificateGetterState {
 
     @Override
     public CertificateGetterState nextState() {
-        if(orderExpiry.isBefore(LocalDateTime.now())){
+        if (orderExpiry.isBefore(LocalDateTime.now())) {
             return new AccountCreatedState(kp, resourceLocations, client, accountLocation, conf);
         }
         int nRetries = conf.getSslCertificateConf().getnPollingRetries();
@@ -120,4 +120,10 @@ public class PollForCertificateState implements CertificateGetterState {
                 .build();
         return client.sendAsync(req, BodyHandlers.ofString());
     }
+
+    @Override
+    public String getAccountLocation() {
+        return accountLocation;
+    }
+
 }

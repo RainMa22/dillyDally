@@ -23,4 +23,10 @@ public class FailedState implements CertificateGetterState {
         return error;
     }
 
+    @Override
+    public String getAccountLocation() {
+        return null;
+    }
+    
+
 }

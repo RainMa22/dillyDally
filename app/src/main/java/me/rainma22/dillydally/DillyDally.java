@@ -3,13 +3,11 @@ package me.rainma22.dillydally;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.security.KeyManagementException;
-import java.security.KeyPair;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateException;
-import java.security.cert.X509Certificate;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import javax.net.ssl.KeyManagerFactory;
@@ -24,19 +22,15 @@ import com.sun.net.httpserver.HttpsParameters;
 import com.sun.net.httpserver.HttpsServer;
 
 import me.rainma22.dillydally.conf.ConfBean;
+import me.rainma22.dillydally.sslcert.CertificateGetter;
 import me.rainma22.dillydally.sslcert.io.CertificateGetterLoader;
-import me.rainma22.dillydally.sslcert.io.CertificateGetterSaver;
-import me.rainma22.dillydally.sslcert.io.SSLLoader;
-import me.rainma22.dillydally.sslcert.io.SSLSaver;
 
 public class DillyDally {
     private ConfBean conf;
-    private SSLLoader sslLoader;
     private CertificateGetterLoader certGetterLoader;
 
     public DillyDally(ConfBean conf) {
         this.conf = conf;
-        sslLoader = new SSLLoader(conf);
         certGetterLoader = new CertificateGetterLoader(conf);
     }
 
@@ -44,26 +38,16 @@ public class DillyDally {
             throws NoSuchAlgorithmException, CertificateException, IOException, KeyStoreException {
         KeyStore ks = KeyStore.getInstance(KeyStore.getDefaultType());
         ks.load(null, new char[0]);
-        int retries = 3;
-        IOException exception = new IOException();
-        while (retries-- > 0) {
-            try {
-                KeyPair kp = sslLoader.loadSSLKeyPair();
-                X509Certificate[] certs = sslLoader.loadSSLCertificates();
-                ks.setKeyEntry("entry", kp.getPrivate(), new char[0], certs);
-                return ks;
-            } catch (IOException e) {
-                // System.out.printf("Encoutered an %s when loading SSL Key and certificate,
-                // trying to get a new key...\n", e);
-                try {
-                    var certGetter = certGetterLoader.loadCertGetter();
-                    var state = certGetter.getCert().get();
-                    new SSLSaver(conf).SaveToFile(state.getSslKeyPair(), state.getCertChain());
-                    new CertificateGetterSaver(conf).SaveToFile(certGetter.getKeyPair());
-                } catch (ExecutionException | InterruptedException | IOException ex) {
-                    exception = new IOException(ex);
-                }
-            }
+        IOException exception;
+        try {
+            CertificateGetter certGetter = certGetterLoader.loadCertGetter();
+            var finalState = certGetter.getCert().get();
+            var kp = finalState.getSslKeyPair();
+            var certs = finalState.getCertChain();
+            ks.setKeyEntry("entry", kp.getPrivate(), new char[0], certs);
+            return ks;
+        } catch (NoSuchAlgorithmException | IOException | InterruptedException | ExecutionException e) {
+            exception = new IOException(e);
         }
         throw exception;
     }

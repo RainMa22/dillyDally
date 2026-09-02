@@ -67,4 +67,9 @@ public class InitializedState implements CertificateGetterState {
         client = new ACMEHttpClient(resourceLocation);
     }
 
+    @Override
+    public String getAccountLocation() {
+        return null;
+    }
+
 }
