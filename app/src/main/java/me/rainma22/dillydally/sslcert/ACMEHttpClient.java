@@ -39,14 +39,12 @@ public class ACMEHttpClient {
                 HttpResponse.BodyHandlers.ofByteArray())
                 .headers()
                 .firstValue("Replay-Nonce")
-                .orElse(null);
+                .orElseThrow();
     }
 
     private <T> HttpResponse<T> processNonce(HttpResponse<T> res) {
         _nextNonce = res.headers().firstValue("Replay-Nonce")
                 .orElse(null);
-        // System.out.println(res);
-        // System.out.println(res.body());
         return res;
     }
 }

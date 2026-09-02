@@ -1,4 +1,4 @@
-package me.rainma22.dillydally.sslcert.states;
+package me.rainma22.dillydally.sslcert.certificategetter.states;
 
 import java.net.URI;
 import java.net.http.HttpRequest.BodyPublishers;
@@ -7,7 +7,6 @@ import java.security.KeyPair;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
-import java.util.Optional;
 
 import org.json.JSONObject;
 
@@ -17,34 +16,20 @@ import me.rainma22.dillydally.sslcert.JoseHttpRequest;
 import me.rainma22.dillydally.sslcert.NewOrderResponse;
 import me.rainma22.dillydally.sslcert.OrderIdentifier;
 import me.rainma22.dillydally.sslcert.ResourceLocationResponse;
+import me.rainma22.dillydally.sslcert.certificategetter.CertificateGetterContext;
 import me.rainma22.dillydally.sslcert.ACMEHttpClient;
 
 public class ARIAccountCreatedState implements CertificateGetterState {
-    private KeyPair kp;
-    private ResourceLocationResponse resourceLocations;
-    private ACMEHttpClient client;
-    private String accountLocation;
-    private String replaces;
-    private ConfBean conf;
-
-    public ARIAccountCreatedState(KeyPair kp, ResourceLocationResponse resourceLocations,
-            ACMEHttpClient client, String accountLocation, String replaces, ConfBean conf) {
-        this.kp = kp;
-        this.resourceLocations = resourceLocations;
-        this.client = client;
-        this.accountLocation = accountLocation;
-        this.replaces = replaces;
-        this.conf = conf;
-    }
 
     @Override
-    public boolean isFinal() {
-        return false;
-    }
-
-    @Override
-    public CertificateGetterState nextState() {
+    public void handle(CertificateGetterContext ctx) {
         try {
+            KeyPair kp = ctx.getAcmeKeyPair();
+            ResourceLocationResponse resourceLocations = ctx.getResourceLocations();
+            ACMEHttpClient client = ctx.getClient();
+            String accountLocation = ctx.getAccountLocation();
+            String replaces = ctx.getReplaces();
+            ConfBean conf = ctx.getConf();
             // create order
             var jws = ACMEJWS.withAccountLocation(accountLocation, client.nextNonce(), resourceLocations.getNewOrder(),
                     kp.getPrivate());
@@ -65,26 +50,19 @@ public class ARIAccountCreatedState implements CertificateGetterState {
                     .POST(BodyPublishers.ofString(reqBody))
                     .build();
 
-            return client.sendAsync(req,
-                    BodyHandlers.ofString())
-                    .thenApply(res -> {
+            var res = client.send(req,
+                    BodyHandlers.ofString());
                         var orderLocation = res.headers().firstValue("Location").get();
                         var newOrderResponse = JSONObject.fromJson(res.body(), NewOrderResponse.class);
-                        return new OrderCreatedState(kp, resourceLocations, client, accountLocation, orderLocation,
-                                LocalDateTime
-                                        .from(DateTimeFormatter.ISO_DATE_TIME.parse(newOrderResponse.getExpires())),
-                                newOrderResponse, conf);
-                    }).get();
+                        ctx.setOrderLocation(orderLocation);
+                        ctx.setOrderResponse(newOrderResponse);
+                        ctx.setOrderExpiry(LocalDateTime.from(
+                            DateTimeFormatter.ISO_DATE_TIME.parse(newOrderResponse.getExpires())
+                        ));
         } catch (Exception e) {
             // fallback to normal AccountCreatedState before fully failling
             // TODO: log the exception
-            return new AccountCreatedState(kp, resourceLocations, client, accountLocation, conf);
+            ctx.updateError(e);
         }
     }
-
-    @Override
-    public String getAccountLocation() {
-        return accountLocation;
-    }
-
 }

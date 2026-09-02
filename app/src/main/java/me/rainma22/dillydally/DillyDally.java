@@ -22,7 +22,7 @@ import com.sun.net.httpserver.HttpsParameters;
 import com.sun.net.httpserver.HttpsServer;
 
 import me.rainma22.dillydally.conf.ConfBean;
-import me.rainma22.dillydally.sslcert.CertificateGetter;
+import me.rainma22.dillydally.sslcert.certificategetter.CertificateGetter;
 import me.rainma22.dillydally.sslcert.io.CertificateGetterLoader;
 
 public class DillyDally {
@@ -41,12 +41,12 @@ public class DillyDally {
         IOException exception;
         try {
             CertificateGetter certGetter = certGetterLoader.loadCertGetter();
-            var finalState = certGetter.getCert().get();
-            var kp = finalState.getSslKeyPair();
-            var certs = finalState.getCertChain();
+            var finalState = certGetter.getCert();
+            var kp = finalState.getLeft();
+            var certs = finalState.getRight();
             ks.setKeyEntry("entry", kp.getPrivate(), new char[0], certs);
             return ks;
-        } catch (NoSuchAlgorithmException | IOException | InterruptedException | ExecutionException e) {
+        } catch (NoSuchAlgorithmException | IOException | InterruptedException e) {
             exception = new IOException(e);
         }
         throw exception;

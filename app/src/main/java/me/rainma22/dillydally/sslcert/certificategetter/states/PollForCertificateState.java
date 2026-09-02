@@ -1,4 +1,4 @@
-package me.rainma22.dillydally.sslcert.states;
+package me.rainma22.dillydally.sslcert.certificategetter.states;
 
 import java.io.IOException;
 import java.io.StringReader;
@@ -25,46 +25,22 @@ import me.rainma22.dillydally.conf.ConfBean;
 import me.rainma22.dillydally.sslcert.ACMEJWS;
 import me.rainma22.dillydally.sslcert.JoseHttpRequest;
 import me.rainma22.dillydally.sslcert.NewOrderResponse;
-import me.rainma22.dillydally.sslcert.ResourceLocationResponse;
 import me.rainma22.dillydally.sslcert.ResponseConstants;
+import me.rainma22.dillydally.sslcert.certificategetter.CertificateGetterContext;
 import me.rainma22.dillydally.sslcert.ACMEHttpClient;
 
 /**
  * PollForCertificateState
  */
 public class PollForCertificateState implements CertificateGetterState {
-    private KeyPair kp;
-    private ResourceLocationResponse resourceLocations;
-    private ACMEHttpClient client;
-    private String accountLocation;
-    private String orderLocation;
-    private LocalDateTime orderExpiry;
-    private KeyPair sslKeyPair;
-    private ConfBean conf;
-
-    public PollForCertificateState(KeyPair kp, ResourceLocationResponse resourceLocations, ACMEHttpClient client,
-            String accountLocation, String orderLocation, LocalDateTime orderExpiry, KeyPair sslKeyPair,
-            ConfBean conf) {
-        this.kp = kp;
-        this.resourceLocations = resourceLocations;
-        this.client = client;
-        this.accountLocation = accountLocation;
-        this.orderLocation = orderLocation;
-        this.orderExpiry = orderExpiry;
-        this.sslKeyPair = sslKeyPair;
-        this.conf = conf;
-    }
 
     @Override
-    public boolean isFinal() {
-        return false;
-    }
-
-    @Override
-    public CertificateGetterState nextState() {
-        if (orderExpiry.isBefore(LocalDateTime.now())) {
-            return new AccountCreatedState(kp, resourceLocations, client, accountLocation, conf);
-        }
+    public void handle(CertificateGetterContext ctx) {
+        final KeyPair kp = ctx.getAcmeKeyPair();
+        final ACMEHttpClient client = ctx.getClient();
+        final String accountLocation = ctx.getAccountLocation();
+        final String orderLocation = ctx.getOrderLocation();
+        final ConfBean conf = ctx.getConf();
         int nRetries = conf.getSslCertificateConf().getnPollingRetries();
         long retrySec = 0;
         while (nRetries-- > 0) {
@@ -74,7 +50,7 @@ public class PollForCertificateState implements CertificateGetterState {
                 } catch (InterruptedException e) {
                     // ignored
                 }
-                var res = getOrder(orderLocation).get();
+                var res = getOrder(ctx,orderLocation).get();
                 JSONObject obj = new JSONObject(res.body());
                 if (!ResponseConstants.VALID.equals(obj.get("status").toString())) {
                     try {
@@ -102,28 +78,25 @@ public class PollForCertificateState implements CertificateGetterState {
                         certs.add(converter.getCertificate((X509CertificateHolder) nextPem));
                     }
                 }
-                X509Certificate[] certChain = certs.stream().toArray(X509Certificate[]::new);
-                return new CompletedState(kp, accountLocation, sslKeyPair, certChain, conf);
+                ctx.setCertChain(certs.stream().toArray(X509Certificate[]::new));
+                ctx.setOrderExpiry(LocalDateTime.MAX);
+                return;
             } catch (Exception e) {
                 // TODO: add logging for exceptions caught
             }
         }
-        return new FailedState(new IOException("Out of retries when polling for certificate"));
+        ctx.updateError(new IOException("Out of retries when polling for certificate"));
     }
 
-    public CompletableFuture<HttpResponse<String>> getOrder(String orderUrl)
+    public CompletableFuture<HttpResponse<String>> getOrder(CertificateGetterContext ctx, String orderUrl)
             throws IOException, InterruptedException {
         URI orderUri = URI.create(orderUrl);
-        var jws = ACMEJWS.withAccountLocation(accountLocation, client.nextNonce(), orderUrl, kp.getPrivate());
+        var jws = ACMEJWS.withAccountLocation(ctx.getAccountLocation(), ctx.getClient().nextNonce(), orderUrl,
+                ctx.getAcmeKeyPair().getPrivate());
         var req = JoseHttpRequest.newBuilder(orderUri)
                 .POST(BodyPublishers.ofString(ACMEJWS.toString(jws)))
                 .build();
-        return client.sendAsync(req, BodyHandlers.ofString());
-    }
-
-    @Override
-    public String getAccountLocation() {
-        return accountLocation;
+        return ctx.getClient().sendAsync(req, BodyHandlers.ofString());
     }
 
 }

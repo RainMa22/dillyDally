@@ -13,7 +13,7 @@ import org.bouncycastle.openssl.PEMParser;
 import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
 import org.bouncycastle.openssl.jcajce.JcePEMDecryptorProviderBuilder;
 import me.rainma22.dillydally.conf.ConfBean;
-import me.rainma22.dillydally.sslcert.CertificateGetter;
+import me.rainma22.dillydally.sslcert.certificategetter.CertificateGetter;
 
 public class CertificateGetterLoader {
     private ConfBean conf;

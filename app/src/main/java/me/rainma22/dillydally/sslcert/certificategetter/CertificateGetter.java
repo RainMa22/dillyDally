@@ -1,21 +1,23 @@
-package me.rainma22.dillydally.sslcert;
+package me.rainma22.dillydally.sslcert.certificategetter;
 
 import java.io.FileWriter;
 import java.io.IOException;
 import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.KeyPair;
+import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
+import java.time.LocalDateTime;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+
+import org.apache.commons.lang3.tuple.Pair;
 import org.bouncycastle.openssl.PEMEncryptor;
 import org.bouncycastle.openssl.jcajce.JcaPEMWriter;
 import org.bouncycastle.openssl.jcajce.JcePEMEncryptorBuilder;
@@ -24,18 +26,18 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import me.rainma22.dillydally.conf.ConfBean;
-import me.rainma22.dillydally.sslcert.states.CompletedState;
-import me.rainma22.dillydally.sslcert.states.FailedState;
-import me.rainma22.dillydally.sslcert.states.InitializedState;
+import me.rainma22.dillydally.sslcert.GenUtils;
+import me.rainma22.dillydally.sslcert.ResourceLocationResponse;
+import me.rainma22.dillydally.sslcert.certificategetter.states.CertificateGetterState;
+import me.rainma22.dillydally.sslcert.certificategetter.states.FailedState;
+import me.rainma22.dillydally.sslcert.certificategetter.states.InitializedState;
 import me.rainma22.dillydally.sslcert.io.SSLSaver;
-import me.rainma22.dillydally.sslcert.states.CertificateGetterState;
 
 /**
  *
  */
 public class CertificateGetter {
-        private CertificateGetterState currState;
-        private KeyPair kp;
+        private CertificateGetterContext context;
         private ConfBean conf;
 
         public CertificateGetter(ConfBean conf) throws IOException, InterruptedException, NoSuchAlgorithmException {
@@ -43,42 +45,33 @@ public class CertificateGetter {
         }
 
         public CertificateGetter(ConfBean conf, KeyPair kp) throws IOException, InterruptedException {
-                this.kp = kp;
                 this.conf = conf;
-                try (var in = URI.create(conf.getServerUrl()).toURL().openStream()) {
-                        var resourceLocations = JSONObject.fromJson(
-                                        new String(in.readAllBytes()),
-                                        ResourceLocationResponse.class);
-                        currState = new InitializedState(kp, resourceLocations, conf);
-                }
+                context = new CertificateGetterContext(kp, conf);
         }
 
-        public CompletableFuture<CompletedState> getCert() {
-                return CompletableFuture.supplyAsync(() -> {
-                        do {
-                                // check for updates if already completed
-                                nextState();
-                                // System.out.println(currState.getClass().getName());
-                        } while (!currState.isFinal());
-                        if (currState instanceof CompletedState) {
-                                return (CompletedState) currState;
-                        } else {
-                                FailedState fs = (FailedState) currState;
-                                throw new RuntimeException(fs.getError());
-                        }
-                });
+        public Pair<KeyPair, X509Certificate[]> getCert() {
+                do {
+                        // check for updates if already completed
+                        nextState();
+                        // System.out.println(currState.getClass().getName());
+                } while (context.getCertChain() == null
+                                && context.getNumRetries() < conf.getSslCertificateConf().getnPollingRetries());
+
+                return Pair.of(context.getSslKeyPair(), context.getCertChain());
         }
 
         public void setCert(KeyPair sslKeyPair, X509Certificate[] certs) {
-                currState = new CompletedState(sslKeyPair, null, sslKeyPair, certs, conf);
+                context.setCertChain(certs);
+                context.setSslKeyPair(sslKeyPair);
+                context.setOrderExpiry(LocalDateTime.MAX);
         }
 
         private void nextState() {
-                this.currState = currState.nextState();
+                context.getState().handle(context);
         }
 
         public KeyPair getKeyPair() {
-                return kp;
+                return context.getAcmeKeyPair();
         }
 
         public static void main(String[] args) throws IOException, InterruptedException, NoSuchAlgorithmException,
@@ -104,7 +97,7 @@ public class CertificateGetter {
                 Files.writeString(configJson, new JSONObject(config).toString(4), StandardCharsets.UTF_8);
 
                 CertificateGetter certGetter = new CertificateGetter(config);
-                certGetter.getCert().join();
+                certGetter.getCert();
 
                 KeyPair acmeKeyPair = certGetter.getKeyPair();
                 Path pemPath = Path.of(sslConf.getPathToACMEPEM());
@@ -117,13 +110,13 @@ public class CertificateGetter {
                         writer.writeObject(acmeKeyPair, encryptor);
                 }
 
-                if (certGetter.currState instanceof CompletedState) {
-                        CompletedState state = (CompletedState) certGetter.currState;
-                        KeyPair sslKeyPair = state.getSslKeyPair();
-                        var certs = state.getCertChain();
+                if (certGetter.context.getCertChain() != null) {
+                        var certPair = certGetter.getCert();
+                        KeyPair sslKeyPair = certPair.getLeft();
+                        var certs = certPair.getRight();
                         new SSLSaver(config).SaveToFile(sslKeyPair, certs);
                 } else {
-                        throw new IOException(((FailedState) certGetter.currState).getError());
+                        throw new IOException(certGetter.context.getError());
                 }
         }
 
