@@ -42,12 +42,13 @@ public class Server {
         try {
             DillyDally dd = new DillyDally(config);
             HttpServer http = dd.createHttp();
-            HttpsServer https = dd.createHttps();
             HttpHandler handler = new FileHandler(Path.of(config.getFileHandlerConf().getDirectoryPath()));
             http.createContext("/", handler);
-            https.createContext("/", handler);
             http.start();
             LOGGER.always().log("Http Server Started at http://" + "0.0.0.0:" + config.getHttpPort());
+
+            HttpsServer https = dd.createHttps();
+            https.createContext("/", handler);
             https.start();
             LOGGER.always().log("Https Server Started at https://" + "0.0.0.0:" + config.getHttpsPort());
         } catch (IOException ie) {
