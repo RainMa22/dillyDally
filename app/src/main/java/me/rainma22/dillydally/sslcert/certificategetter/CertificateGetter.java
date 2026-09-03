@@ -2,19 +2,15 @@ package me.rainma22.dillydally.sslcert.certificategetter;
 
 import java.io.FileWriter;
 import java.io.IOException;
-import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.KeyPair;
-import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
-import java.security.PrivateKey;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.time.LocalDateTime;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
 import org.apache.commons.lang3.tuple.Pair;
@@ -27,10 +23,6 @@ import org.json.JSONObject;
 
 import me.rainma22.dillydally.conf.ConfBean;
 import me.rainma22.dillydally.sslcert.GenUtils;
-import me.rainma22.dillydally.sslcert.ResourceLocationResponse;
-import me.rainma22.dillydally.sslcert.certificategetter.states.CertificateGetterState;
-import me.rainma22.dillydally.sslcert.certificategetter.states.FailedState;
-import me.rainma22.dillydally.sslcert.certificategetter.states.InitializedState;
 import me.rainma22.dillydally.sslcert.io.SSLSaver;
 
 /**
