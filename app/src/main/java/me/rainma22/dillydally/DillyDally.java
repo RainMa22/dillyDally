@@ -54,7 +54,7 @@ public class DillyDally {
             ks.setKeyEntry("entry", kp.getPrivate(), new char[0], certs);
             ForkJoinPool.commonPool().submit(() -> {
                 try {
-                    new CertificateGetterSaver(conf).SaveToFile(kp);
+                    new CertificateGetterSaver(conf).SaveToFile(certGetter);
                 } catch (IOException e) {
                     LOGGER.warn("failed to save gotten certificate");
                     LOGGER.warn(e);
