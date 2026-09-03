@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Optional;
+import java.util.function.Supplier;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
@@ -15,13 +17,46 @@ public class FileHandler implements HttpHandler {
         this.fileDir = fileDir.toAbsolutePath();
     }
 
+    private Supplier<Optional<byte[]>> readIfExists(Path path) {
+        return () -> {
+            try {
+                return Optional.of(Files.readAllBytes(path));
+            } catch (Exception e) {
+                return Optional.empty();
+            }
+        };
+    }
+
+    private byte[] listFilesAsHtml(Path path) throws IOException {
+        byte[] res = Files.list(path)
+                .sorted((p1, p2) -> {
+                    if (Files.isDirectory(p1) && !Files.isDirectory(p2)) {
+                        return -1;
+                    } else if (!Files.isDirectory(p1) && Files.isDirectory(p2)) {
+                        return 1;
+                    } else {
+                        return p1.compareTo(p2);
+                    }
+                })
+                .map(p -> {
+                    String pathString = path.toAbsolutePath().relativize(p.toAbsolutePath())
+                            .toString();
+                    boolean isFolder = Files.isDirectory(p);
+                    return pathString.concat(isFolder ? "/" : "");
+                })
+                // .peek(System.out::println)
+                .map(s -> String.format("<li><a href=%s>%s</a></li>", s, s))
+                .reduce("<!DOCTYPE HTML>\n<html><body><ul>",
+                        String::concat)
+                .concat("</ul></body></html>").getBytes(StandardCharsets.UTF_8);
+        return res;
+    }
+
     @Override
     public void handle(HttpExchange exch) throws IOException {
         try {
             Path path = fileDir
                     .resolve(Path.of(".", exch.getRequestURI().getPath().replaceFirst("/", "")));
-            // System.out.print(exch.getRequestURI().getPath() + ": ");
-            // System.out.println(path.toAbsolutePath().toString());
             if (!path.toAbsolutePath().startsWith(fileDir)) {
                 exch.sendResponseHeaders(400, 0);
                 return;
@@ -36,27 +71,10 @@ public class FileHandler implements HttpHandler {
                 }
                 if (Files.isDirectory(path)) {
                     exch.getResponseHeaders().set("Content-Type", "text/html");
-                    byte[] res = Files.list(path)
-                            .sorted((p1, p2) -> {
-                                if (Files.isDirectory(p1) && !Files.isDirectory(p2)) {
-                                    return -1;
-                                } else if (!Files.isDirectory(p1) && Files.isDirectory(p2)) {
-                                    return 1;
-                                } else {
-                                    return p1.compareTo(p2);
-                                }
-                            })
-                            .map(p -> {
-                                String pathString = path.toAbsolutePath().relativize(p.toAbsolutePath())
-                                        .toString();
-                                boolean isFolder = Files.isDirectory(p);
-                                return pathString.concat(isFolder ? "/" : "");
-                            })
-                            // .peek(System.out::println)
-                            .map(s -> String.format("<li><a href=%s>%s</a></li>", s, s))
-                            .reduce("<!DOCTYPE HTML>\n<html><body><ul>",
-                                    String::concat)
-                            .concat("</ul></body></html>").getBytes(StandardCharsets.UTF_8);
+                    byte[] res = readIfExists(path.resolve("index.html")).get()
+                            .or(readIfExists(path.resolve("index.htm")))
+                            .orElse(listFilesAsHtml(path));
+
                     exch.sendResponseHeaders(200, res.length);
                     exch.getResponseBody().write(res);
                     return;
