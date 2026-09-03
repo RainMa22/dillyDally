@@ -1,5 +1,6 @@
 package me.rainma22.dillydally.sslcert.io;
 
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -7,6 +8,8 @@ import java.security.KeyPair;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.openssl.PEMEncryptedKeyPair;
 import org.bouncycastle.openssl.PEMParser;
@@ -17,7 +20,7 @@ import me.rainma22.dillydally.sslcert.certificategetter.CertificateGetter;
 
 public class CertificateGetterLoader {
     private ConfBean conf;
-
+    private static final Logger LOGGER = LogManager.getLogger();
     public CertificateGetterLoader(ConfBean conf) {
         this.conf = conf;
     }
@@ -38,7 +41,9 @@ public class CertificateGetterLoader {
             var pkp = pekp.decryptKeyPair(decryptorProvider);
             KeyPair kp = converter.getKeyPair(pkp);
             cGetter = new CertificateGetter(conf, kp);
-        } catch (IOException | InterruptedException e) {
+        } catch (FileNotFoundException | InterruptedException e) {
+            LOGGER.warn("Could not load saved PEM key and certificate, will try to regenerate.");
+            LOGGER.warn(e);
             cGetter = new CertificateGetter(conf);
         }
         

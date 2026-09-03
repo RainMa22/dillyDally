@@ -8,13 +8,17 @@ import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateException;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ForkJoinPool;
+
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLParameters;
 import javax.net.ssl.TrustManagerFactory;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import com.sun.net.httpserver.HttpServer;
 import com.sun.net.httpserver.HttpsConfigurator;
@@ -24,8 +28,10 @@ import com.sun.net.httpserver.HttpsServer;
 import me.rainma22.dillydally.conf.ConfBean;
 import me.rainma22.dillydally.sslcert.certificategetter.CertificateGetter;
 import me.rainma22.dillydally.sslcert.io.CertificateGetterLoader;
+import me.rainma22.dillydally.sslcert.io.CertificateGetterSaver;
 
 public class DillyDally {
+    private static final Logger LOGGER = LogManager.getLogger();
     private ConfBean conf;
     private CertificateGetterLoader certGetterLoader;
 
@@ -36,6 +42,7 @@ public class DillyDally {
 
     private KeyStore initializeKeyStore()
             throws NoSuchAlgorithmException, CertificateException, IOException, KeyStoreException {
+                LOGGER.info("loading keyStore");
         KeyStore ks = KeyStore.getInstance(KeyStore.getDefaultType());
         ks.load(null, new char[0]);
         IOException exception;
@@ -45,6 +52,15 @@ public class DillyDally {
             var kp = finalState.getLeft();
             var certs = finalState.getRight();
             ks.setKeyEntry("entry", kp.getPrivate(), new char[0], certs);
+            ForkJoinPool.commonPool().submit(() -> {
+                try {
+                    new CertificateGetterSaver(conf).SaveToFile(kp);
+                } catch (IOException e) {
+                    LOGGER.warn("failed to save gotten certificate");
+                    LOGGER.warn(e);
+                }
+            });
+            LOGGER.info("finished loading keyStore");
             return ks;
         } catch (NoSuchAlgorithmException | IOException | InterruptedException e) {
             exception = new IOException(e);
@@ -53,15 +69,17 @@ public class DillyDally {
     }
 
     public HttpServer createHttp() throws IOException {
+        LOGGER.info("Creating Http Server");
         HttpServer server = HttpServer.create(new InetSocketAddress(conf.getHttpPort()), 0);
         server.setExecutor(Executors.newVirtualThreadPerTaskExecutor());
+        LOGGER.info("Http Server Created");
         return server;
     }
 
     public HttpsServer createHttps()
             throws NoSuchAlgorithmException, CertificateException, IOException, KeyStoreException,
             UnrecoverableKeyException, KeyManagementException {
-
+        LOGGER.info("Creating Https Server");
         var keyStore = initializeKeyStore();
         SSLContext ctx = SSLContext.getInstance("TLS");
         KeyManagerFactory kmf = KeyManagerFactory.getInstance("SunX509");
@@ -87,13 +105,13 @@ public class DillyDally {
                     SSLParameters defaultSSLParameters = c.getDefaultSSLParameters();
                     params.setSSLParameters(defaultSSLParameters);
                 } catch (Exception ex) {
-                    // ILogger log = new LoggerFactory().getLogger();
-                    // log.exception(ex);
-                    // log.error("Failed to create HTTPS port");
+                    LOGGER.error("Failed to create HTTPS port");
+                    LOGGER.error(ex);
                 }
             }
         });
         server.setExecutor(Executors.newVirtualThreadPerTaskExecutor());
+        LOGGER.info("Https Server Created");
         return server;
     }
 }

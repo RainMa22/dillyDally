@@ -13,10 +13,14 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 public class Server {
+
+    private static final Logger LOGGER = LogManager.getLogger();
 
     private static final Path configDirPath = Path.of("config");
     private static final Path configJson = configDirPath.resolve("config.json");
@@ -28,14 +32,13 @@ public class Server {
         } catch (IOException ie) {
             // ignored
         }
-
         try {
             config = new JSONObject(Files.readString(configJson)).fromJson(ConfBean.class);
-            Files.writeString(configJson, new JSONObject(config).toString(4));
         } catch (JSONException | IOException e) {
-            throw e;
             // ignored
         }
+        Files.writeString(configJson, new JSONObject(config).toString(4));
+
         try {
             DillyDally dd = new DillyDally(config);
             HttpServer http = dd.createHttp();
@@ -44,14 +47,12 @@ public class Server {
             http.createContext("/", handler);
             https.createContext("/", handler);
             http.start();
-            System.out.println("Http Server Started at http://" + "0.0.0.0:" + config.getHttpPort());
+            LOGGER.always().log("Http Server Started at http://" + "0.0.0.0:" + config.getHttpPort());
             https.start();
-            System.out.println("Https Server Started at https://" + "0.0.0.0:" + config.getHttpsPort());
+            LOGGER.always().log("Https Server Started at https://" + "0.0.0.0:" + config.getHttpsPort());
         } catch (IOException ie) {
-            ie.printStackTrace();
+            LOGGER.error(ie);
             return;
-        } finally {
-            // server.stop(0);
         }
 
     }
