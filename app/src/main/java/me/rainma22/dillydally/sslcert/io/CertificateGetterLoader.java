@@ -40,21 +40,23 @@ public class CertificateGetterLoader {
             PEMEncryptedKeyPair pekp = (PEMEncryptedKeyPair) parser.readObject();
             var pkp = pekp.decryptKeyPair(decryptorProvider);
             KeyPair kp = converter.getKeyPair(pkp);
+            LOGGER.info("Loaded ACME keypair from file {}", acmeKeyPath);
             cGetter = new CertificateGetter(conf, kp);
-        } catch (FileNotFoundException | InterruptedException e) {
+        } catch (FileNotFoundException | InterruptedException | NullPointerException e) {
             LOGGER.warn("Could not load saved PEM key and certificate, will try to regenerate.");
             LOGGER.warn(e);
             cGetter = new CertificateGetter(conf);
         }
         
         try {
+            LOGGER.info("Loading SSL key and cetificate");
             var sslLoader = new SSLLoader(conf);
             var certs = sslLoader.loadSSLCertificates();
             var kp = sslLoader.loadSSLKeyPair();
             // promote the state to completed if keys exists
             cGetter.setCert(kp, certs);
         } catch (CertificateException | IOException e) {
-            //ignored
+            LOGGER.warn("Problem loading Loading SSL key and cetificate", e);
         }
 
         return cGetter;
