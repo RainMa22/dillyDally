@@ -57,7 +57,9 @@ public class FileHandler implements HttpHandler {
         try {
             Path path = fileDir
                     .resolve(Path.of(".", exch.getRequestURI().getPath().replaceFirst("/", "")));
-            if (!path.toAbsolutePath().startsWith(fileDir)) {
+            System.out.println(path);
+            System.out.println(fileDir);
+            if (!path.toRealPath().startsWith(fileDir.toRealPath())) {
                 exch.sendResponseHeaders(400, 0);
                 return;
             } else {
