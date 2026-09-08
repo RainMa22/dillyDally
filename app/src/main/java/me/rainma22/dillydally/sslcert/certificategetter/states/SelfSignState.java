@@ -3,7 +3,6 @@ package me.rainma22.dillydally.sslcert.certificategetter.states;
 import me.rainma22.dillydally.sslcert.certificategetter.CertificateGetterContext;
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.asn1.x509.*;
-import org.bouncycastle.asn1.x509.sigi.NameOrPseudonym;
 import org.bouncycastle.cert.CertIOException;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
@@ -30,8 +29,9 @@ public class SelfSignState implements CertificateGetterState {
             var sslKeyPair = gen.genKeyPair();
             ctx.setSslKeyPair(sslKeyPair);
             var domains = ctx.getConf().getDomains();
-            var name = new X500Name(String.format("CN=%s", ctx.getConf().getDomains().get(0)));
-            var certBuilder = new JcaX509v3CertificateBuilder(name, BigInteger.TWO, Date.from(Instant.now()),
+            var name = new X500Name(String.format("CN=%s", ctx.getConf().getDomains().getFirst()));
+            var certBuilder = new JcaX509v3CertificateBuilder(name, BigInteger.valueOf(System.currentTimeMillis()),
+                    Date.from(Instant.now()),
                     Date.from(Instant.now().plus(Duration.ofDays(3650))), name, sslKeyPair.getPublic())
                     .addExtension(
                             Extension.basicConstraints,
@@ -47,6 +47,7 @@ public class SelfSignState implements CertificateGetterState {
                             Extension.subjectAlternativeName,
                             false,
                             new GeneralNames(domains.stream()
+                                    .skip(1)
                                     .map(str -> new GeneralName(GeneralName.dNSName,str))
                                     .toArray(GeneralName[]::new))
                     );
