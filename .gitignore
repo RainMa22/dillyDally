@@ -14,3 +14,6 @@ app/config/**
 
 res/**
 *.p12
+
+.idea
+.vscode
