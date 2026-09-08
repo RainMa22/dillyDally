@@ -49,7 +49,7 @@ public class CertificateGetterLoader {
         }
         
         try {
-            LOGGER.info("Loading SSL key and cetificate");
+            LOGGER.info("Loading SSL key and certificate");
             var sslLoader = new SSLLoader(conf);
             var certs = sslLoader.loadSSLCertificates();
             var kp = sslLoader.loadSSLKeyPair();

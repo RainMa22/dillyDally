@@ -13,18 +13,7 @@ import me.rainma22.dillydally.conf.ConfBean;
 import me.rainma22.dillydally.sslcert.ACMEHttpClient;
 import me.rainma22.dillydally.sslcert.NewOrderResponse;
 import me.rainma22.dillydally.sslcert.ResourceLocationResponse;
-import me.rainma22.dillydally.sslcert.certificategetter.states.ARIAccountCreatedState;
-import me.rainma22.dillydally.sslcert.certificategetter.states.AccountCreatedState;
-import me.rainma22.dillydally.sslcert.certificategetter.states.AuthorizationValidationState;
-import me.rainma22.dillydally.sslcert.certificategetter.states.CertificateGetterState;
-import me.rainma22.dillydally.sslcert.certificategetter.states.CheckRenewalState;
-import me.rainma22.dillydally.sslcert.certificategetter.states.CompletingAuthorizationState;
-import me.rainma22.dillydally.sslcert.certificategetter.states.RequestCertificateState;
-import me.rainma22.dillydally.sslcert.certificategetter.states.GetResourceLocationState;
-import me.rainma22.dillydally.sslcert.certificategetter.states.InitializedState;
-import me.rainma22.dillydally.sslcert.certificategetter.states.OrderCreatedState;
-import me.rainma22.dillydally.sslcert.certificategetter.states.OrderValidationState;
-import me.rainma22.dillydally.sslcert.certificategetter.states.PollForCertificateState;
+import me.rainma22.dillydally.sslcert.certificategetter.states.*;
 
 public class CertificateGetterContext {
     private final KeyPair acmeKeyPair;
@@ -54,6 +43,8 @@ public class CertificateGetterContext {
     }
 
     public CertificateGetterState getState() {
+        if (conf.getServerUrl().equalsIgnoreCase("self-sign"))
+            return new SelfSignState();
         if (resourceLocations == null)
             return new GetResourceLocationState();
         if (accountLocation == null)
@@ -76,9 +67,9 @@ public class CertificateGetterContext {
             return new AuthorizationValidationState();
         if (!orderValidated)
             return new OrderValidationState();
-        if (orderValidated && sslKeyPair == null) 
+        if (orderValidated && sslKeyPair == null)
             return new RequestCertificateState();
-        if(certChain == null)
+        if (certChain == null)
             return new PollForCertificateState();
         return new CheckRenewalState();
     }
